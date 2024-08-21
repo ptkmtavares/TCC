@@ -1,0 +1,5 @@
+Dataset/data/*
+Dataset/Phishing/*
+Dataset/SpamHam/*
+Dataset/index
+__pycache__/*
