@@ -163,7 +163,7 @@ if __name__ == '__main__':
     n_critic = 1  # Atualizar o discriminador uma vez por cada atualização do gerador
     epoch_times = []
 
-    scaler = torch.cuda.amp.GradScaler("cuda")  # Usar Mixed Precision Training
+    scaler = torch.amp.GradScaler("cuda")  # Usar Mixed Precision Training
 
     for epoch in range(start_epoch, num_epochs):
         start_time = time.time()
@@ -178,7 +178,7 @@ if __name__ == '__main__':
                 noise = torch.randn(real_data.size(0), input_dim).to(device)
                 fake_data = G(noise)
                 optimizer_D.zero_grad()
-                with torch.cuda.amp.autocast("cuda"):  # Usar Mixed Precision Training
+                with torch.amp.autocast("cuda"):  # Usar Mixed Precision Training
                     real_loss = criterion(D(real_data), real_labels)
                     fake_loss = criterion(D(fake_data.detach()), fake_labels)
                     d_loss = real_loss + fake_loss
@@ -190,7 +190,7 @@ if __name__ == '__main__':
             noise = torch.randn(real_data.size(0), input_dim).to(device)
             fake_data = G(noise)
             optimizer_G.zero_grad()
-            with torch.cuda.amp.autocast("cuda"):  # Usar Mixed Precision Training
+            with torch.amp.autocast("cuda"):  # Usar Mixed Precision Training
                 g_loss = criterion(D(fake_data), real_labels)
             scaler.scale(g_loss).backward()
             scaler.step(optimizer_G)
