@@ -230,32 +230,13 @@ if __name__ == '__main__':
     augmented_train_set_normalized = scaler.fit_transform(augmented_train_set)
     test_set_normalized = scaler.transform(test_set)
 
-    from sklearn.model_selection import GridSearchCV
+    # Treinar o modelo de detecção com o conjunto de dados aumentado
+    mlp = MLPClassifier(hidden_layer_sizes=(40,), activation='tanh', learning_rate='adaptive', solver='adam', alpha=0.001, max_iter=1000, random_state=9)
+    mlp.fit(augmented_train_set_normalized, augmented_train_labels)
 
-# Definir os hiperparâmetros para ajuste
-param_grid = {
-    'hidden_layer_sizes': [(40,), (50,), (60,)],
-    'activation': ['tanh', 'relu'],
-    'solver': ['adam', 'sgd'],
-    'alpha': [0.0001, 0.001, 0.01],
-    'learning_rate': ['constant', 'adaptive'],
-    'max_iter': [1000, 1500]
-}
+    accuracy = 100 * mlp.score(test_set_normalized, test_labels)
+    print('Accuracy for MLP classifier with adversarial examples(%)={accuracy:.2f}'.format(accuracy=accuracy))
 
-# Inicializar o MLPClassifier
-mlp = MLPClassifier(random_state=9)
-
-# Usar GridSearchCV para encontrar os melhores hiperparâmetros
-grid_search = GridSearchCV(mlp, param_grid, cv=3, scoring='accuracy', n_jobs=-1)
-grid_search.fit(augmented_train_set_normalized, augmented_train_labels)
-
-# Obter o melhor modelo
-best_mlp = grid_search.best_estimator_
-
-# Avaliar o modelo no conjunto de teste
-accuracy = 100 * best_mlp.score(test_set_normalized, test_labels)
-print('Accuracy for MLP classifier with adversarial examples(%)={accuracy:.2f}'.format(accuracy=accuracy))
-
-pred_labels = best_mlp.predict(test_set_normalized)
-cm = confusion_matrix(test_labels, pred_labels)
-print('Confusion matrix for MLP classifier with adversarial examples:\n', cm)
+    pred_labels = mlp.predict(test_set_normalized)
+    cm = confusion_matrix(test_labels, pred_labels)
+    print('Confusion matrix for MLP classifier with adversarial examples:\n', cm)
