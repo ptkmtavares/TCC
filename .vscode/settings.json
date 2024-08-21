@@ -1,11 +1,14 @@
 {
     "cSpell.words": [
         "beenthere",
+        "cudnn",
         "dmarc",
         "Dmarc",
         "domainkey",
+        "dtype",
         "exclam",
         "figsize",
+        "hstack",
         "importances",
         "inmail",
         "isin",
@@ -15,6 +18,7 @@
         "msmail",
         "optim",
         "parsedate",
+        "randn",
         "relu",
         "softfail",
         "texthtml",

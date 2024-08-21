@@ -34,7 +34,7 @@ def save_checkpoint(epoch, model_G, model_D, optimizer_G, optimizer_D, loss_G, l
 def load_checkpoint(filename, model_G, model_D, optimizer_G, optimizer_D):
     if os.path.isfile(filename):
         print(f"Loading checkpoint '{filename}'")
-        checkpoint = torch.load(filename)
+        checkpoint = torch.load(filename, weights_only=True)
         epoch = checkpoint['epoch']
         model_G.load_state_dict(checkpoint['model_G_state_dict'])
         model_D.load_state_dict(checkpoint['model_D_state_dict'])
@@ -104,8 +104,7 @@ class Discriminator(nn.Module):
             nn.Linear(256, 128),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(128, 1),
-            nn.Sigmoid()
+            nn.Linear(128, 1)
         )
 
     def forward(self, x):
@@ -151,7 +150,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
     # Definir funções de perda e otimizadores
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
     optimizer_G = optim.Adam(G.parameters(), lr=0.0002)
     optimizer_D = optim.Adam(D.parameters(), lr=0.0001)
 
@@ -163,8 +162,10 @@ if __name__ == '__main__':
     n_critic = 1  # Atualizar o discriminador uma vez por cada atualização do gerador
     epoch_times = []
 
-    scaler = torch.amp.GradScaler("cuda")  # Usar Mixed Precision Training
+    # Usar Mixed Precision Training
+    grad_scaler = torch.amp.GradScaler("cuda")
 
+    # Treinamento da GAN
     for epoch in range(start_epoch, num_epochs):
         start_time = time.time()
         
@@ -182,9 +183,9 @@ if __name__ == '__main__':
                     real_loss = criterion(D(real_data), real_labels)
                     fake_loss = criterion(D(fake_data.detach()), fake_labels)
                     d_loss = real_loss + fake_loss
-                scaler.scale(d_loss).backward()
-                scaler.step(optimizer_D)
-                scaler.update()
+                grad_scaler.scale(d_loss).backward()
+                grad_scaler.step(optimizer_D)
+                grad_scaler.update()
 
             # Atualizar o gerador
             noise = torch.randn(real_data.size(0), input_dim).to(device)
@@ -192,9 +193,9 @@ if __name__ == '__main__':
             optimizer_G.zero_grad()
             with torch.amp.autocast("cuda"):  # Usar Mixed Precision Training
                 g_loss = criterion(D(fake_data), real_labels)
-            scaler.scale(g_loss).backward()
-            scaler.step(optimizer_G)
-            scaler.update()
+            grad_scaler.scale(g_loss).backward()
+            grad_scaler.step(optimizer_G)
+            grad_scaler.update()
 
         end_time = time.time()
         epoch_time = end_time - start_time
@@ -209,26 +210,52 @@ if __name__ == '__main__':
         if (epoch + 1) % 500 == 0:
             save_checkpoint(epoch, G, D, optimizer_G, optimizer_D, g_loss.item(), d_loss.item())
 
-    # Gerar exemplos adversariais (da meteade do tamanho do conjunto de treinamento)
+    # Gerar exemplos adversariais (da metade do tamanho do conjunto de treinamento)
     num_samples = len(train_set) // 2
+    print(f'Generating {num_samples} adversarial examples...')
     noise = torch.randn(num_samples, input_dim).to(device)
     generated_data = G(noise).cpu().detach().numpy()
 
     # Adicionar exemplos adversariais ao conjunto de treinamento
     augmented_train_set = np.vstack([train_set, generated_data])
-    augmented_train_labels = np.hstack([train_labels.cpu().numpy(), np.zeros(num_samples)])  # Assumindo que os exemplos gerados são falsos
+
+    # Ajustar os rótulos dos exemplos adversariais
+    # Assumindo que os exemplos gerados são falsos e queremos rotulá-los como 'spam' (2)
+    augmented_train_labels = np.hstack([train_labels.cpu().numpy(), np.full(num_samples, 2)])
+
+    # Redefinir o scaler como MinMaxScaler
+    scaler = MinMaxScaler(feature_range=(0, 1))
 
     # Normalizar o conjunto de dados aumentado
     augmented_train_set_normalized = scaler.fit_transform(augmented_train_set)
     test_set_normalized = scaler.transform(test_set)
 
-    # Treinar o modelo de detecção com o conjunto de dados aumentado
-    mlp = MLPClassifier(hidden_layer_sizes=(40,), activation='tanh', learning_rate='adaptive', solver='adam', alpha=0.001, max_iter=1000, random_state=9)
-    mlp.fit(augmented_train_set_normalized, augmented_train_labels)
+    from sklearn.model_selection import GridSearchCV
 
-    accuracy = 100 * mlp.score(test_set_normalized, test_labels)
-    print('Accuracy for MLP classifier with adversarial examples(%)={accuracy:.2f}'.format(accuracy=accuracy))
+# Definir os hiperparâmetros para ajuste
+param_grid = {
+    'hidden_layer_sizes': [(40,), (50,), (60,)],
+    'activation': ['tanh', 'relu'],
+    'solver': ['adam', 'sgd'],
+    'alpha': [0.0001, 0.001, 0.01],
+    'learning_rate': ['constant', 'adaptive'],
+    'max_iter': [1000, 1500]
+}
 
-    pred_labels = mlp.predict(test_set_normalized)
-    cm = confusion_matrix(test_labels, pred_labels)
-    print('Confusion matrix for MLP classifier with adversarial examples:\n', cm)
+# Inicializar o MLPClassifier
+mlp = MLPClassifier(random_state=9)
+
+# Usar GridSearchCV para encontrar os melhores hiperparâmetros
+grid_search = GridSearchCV(mlp, param_grid, cv=3, scoring='accuracy', n_jobs=-1)
+grid_search.fit(augmented_train_set_normalized, augmented_train_labels)
+
+# Obter o melhor modelo
+best_mlp = grid_search.best_estimator_
+
+# Avaliar o modelo no conjunto de teste
+accuracy = 100 * best_mlp.score(test_set_normalized, test_labels)
+print('Accuracy for MLP classifier with adversarial examples(%)={accuracy:.2f}'.format(accuracy=accuracy))
+
+pred_labels = best_mlp.predict(test_set_normalized)
+cm = confusion_matrix(test_labels, pred_labels)
+print('Confusion matrix for MLP classifier with adversarial examples:\n', cm)
