@@ -3,4 +3,5 @@ Dataset/Phishing/*
 Dataset/SpamHam/*
 Dataset/index
 __pycache__/*
-checkpoint.pth.tar
+checkpoints/phishing/*
+checkpoints/spam/*

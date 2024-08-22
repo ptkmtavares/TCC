@@ -1,111 +1,111 @@
-from sklearn.neural_network import MLPClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.inspection import permutation_importance
-from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
 import numpy as np
-import dataExtractor
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+from dataExtractor import getTrainingTestSet
+from torch.utils.data import DataLoader, TensorDataset
+from mlp import MLP, train_mlp, evaluate_mlp
+from gan import Generator, Discriminator, train_gan, generate_adversarial_examples
 
-# --------------------------------------------
-# Specify seed random number generator
-# --------------------------------------------
-seed = 9
-np.random.seed(seed)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# --------------------------------------------
-# Load data and targets
-# --------------------------------------------
+# Carregar e pré-processar os dados
+print(
+    f"{'='*50}\n"
+    f"🚀 Loading and preprocessing data...\n"
+    f"{'='*50}"
+)
 selected_data = ['ham', 'spam', 'phishing']
-data, index = dataExtractor.getTrainingTestSet('Dataset/index', selected_data, 1.0)
+data, index = getTrainingTestSet('Dataset/index', selected_data, 1.0)
 
-print('data={size:d}'.format(size=len(data)))
-print('index={size:d}'.format(size=len(index)))
+data = np.array(data)
+index = np.array(index)
 
-# --------------------------------------------
-# Splits train and test sets
-# --------------------------------------------
-P = 0.75  # percentage reserved for training
-train_set, test_set, train_labels, test_labels = train_test_split(data, index, train_size=P, random_state=seed, shuffle=True)
-print('Train test size={size:d}'.format(size=len(train_labels)))
+train_set, test_set, train_labels, test_labels = train_test_split(data, index, train_size=0.75, random_state=9, shuffle=True)
 
-# 3. Preprocess the data by scaling the features
-scaler = StandardScaler()
-train_set_scaled = scaler.fit_transform(train_set)
-test_set_scaled = scaler.transform(test_set)
+scaler = MinMaxScaler(feature_range=(0, 1))
+train_set_normalized = scaler.fit_transform(train_set)
+test_set_normalized = scaler.transform(test_set)
 
-# 4. Create an MLP classifier
-mlp = MLPClassifier(hidden_layer_sizes=(40,), activation='tanh', learning_rate='adaptive', solver='adam', alpha=0.001, max_iter=1000, random_state=seed)
-mlp.fit(train_set_scaled, train_labels)
+train_set_normalized = torch.tensor(train_set_normalized, dtype=torch.float32).to(device)
+train_labels = torch.tensor(train_labels, dtype=torch.float32).to(device)
 
-accuracy = 100 * mlp.score(test_set_scaled, test_labels)
-print('Accuracy for MLP classifier(%)={accuracy:.2f}'.format(accuracy=accuracy))
+train_dataset = TensorDataset(train_set_normalized, train_labels)
+batch_size = 256
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
-pred_labels = mlp.predict(test_set_scaled)
-num_classes = len(set(test_labels))
+input_dim = train_set.shape[1]
 
-cm = confusion_matrix(test_labels, pred_labels)
-print('Confusion matrix for MLP classifier:\n', cm)
+# Treinar GAN para phishing
+print(
+    f"🎣 Training GAN for phishing...\n"
+    f"{'='*50}"
+)
+phishing_data = train_set[train_labels.cpu().numpy() == 2]
+phishing_labels = train_labels[train_labels.cpu().numpy() == 2]
+phishing_dataset = TensorDataset(torch.tensor(phishing_data, dtype=torch.float32).to(device), phishing_labels)
+phishing_loader = DataLoader(phishing_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
-# Plot confusion matrix for Naive Bayes classifier
-fig, ax = plt.subplots()
-cm_with_totals = np.zeros((num_classes + 1, num_classes + 1))
-cm_with_totals[:num_classes, :num_classes] = cm
-cm_with_totals[num_classes, :num_classes] = np.sum(cm, axis=0)
-cm_with_totals[:num_classes, num_classes] = np.sum(cm, axis=1)
-cm_with_totals[num_classes, num_classes] = np.trace(cm)
-im = ax.imshow(cm_with_totals, cmap='RdYlGn')
+G_phishing = Generator(input_dim, input_dim).to(device)
+D_phishing = Discriminator(input_dim).to(device)
+train_gan(G_phishing, D_phishing, phishing_loader, input_dim, device=device, checkpoint_dir='checkpoints/phishing/', num_epochs=5000)
 
-# Add count values to each cell
-for i in range(num_classes + 1):
-    for j in range(num_classes + 1):
-        if(i == num_classes or j == num_classes):
-                text = ax.text(j, i, "{:.0f}\n{:.2%}".format(cm_with_totals[i, j], cm_with_totals[i, j] / np.sum(cm)),
-                           ha="center", va="center", color="white", fontweight='bold')
-        else:
-            text = ax.text(j, i, "{:.0f}\n{:.2%}".format(cm_with_totals[i, j], cm_with_totals[i, j] / np.sum(cm)),
-                           ha="center", va="center", color="black")
+# Treinar GAN para spam
+print(
+    f"📧 Training GAN for spam...\n"
+    f"{'='*50}"
+)
+spam_data = train_set[train_labels.cpu().numpy() == 1]
+spam_labels = train_labels[train_labels.cpu().numpy() == 1]
+spam_dataset = TensorDataset(torch.tensor(spam_data, dtype=torch.float32).to(device), spam_labels)
+spam_loader = DataLoader(spam_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
-# Set axis labels and title
-ax.set_xticks(range(num_classes + 1))
-ax.set_yticks(range(num_classes + 1))
-class_labels = selected_data
-class_labels.append('Total')
-ax.set_xticklabels(class_labels, rotation=45)
-ax.set_yticklabels(class_labels)
-ax.set_xlabel('Predicted')
-ax.set_ylabel('True')
-plt.title('Confusion matrix for MLP classifier')
+G_spam = Generator(input_dim, input_dim).to(device)
+D_spam = Discriminator(input_dim).to(device)
+train_gan(G_spam, D_spam, spam_loader, input_dim, device=device, checkpoint_dir='checkpoints/spam/')
 
-# Add colorbar
-plt.colorbar(im)
+# Gerar exemplos adversariais
+print(
+    f"🔍 Generating adversarial examples...\n"
+    f"{'='*50}"
+)
+num_samples_phishing = len(phishing_data) // 2
+num_samples_spam = len(spam_data) // 2
 
-# Display the plot
-plt.show()
+generated_phishing = generate_adversarial_examples(G_phishing, num_samples_phishing, input_dim, device=device)
+generated_spam = generate_adversarial_examples(G_spam, num_samples_spam, input_dim, device=device)
 
-# Get the feature importance using permutation importance
-results = permutation_importance(mlp, test_set_scaled, test_labels, scoring='accuracy', n_repeats=2, n_jobs=-1)
-importance = results.importances_mean # type: ignore
+# Aumentar o conjunto de treinamento
+print(
+    f"📈 Augmenting the training set...\n"
+    f"{'='*50}"
+)
+augmented_train_set = np.vstack([train_set, generated_phishing, generated_spam])
+augmented_train_labels = np.hstack([train_labels.cpu().numpy(), np.full(num_samples_phishing, 2), np.full(num_samples_spam, 1)])
 
-fig = plt.figure(figsize=(25, 7))
+scaler = MinMaxScaler(feature_range=(0, 1))
+augmented_train_set_normalized = scaler.fit_transform(augmented_train_set)
+test_set_normalized = scaler.transform(test_set)
 
-importances_sorted = sorted(zip(importance, dataExtractor.features), reverse=True)
-feature_sorted, importance_sorted = zip(*importances_sorted)
+X_train = torch.tensor(augmented_train_set_normalized, dtype=torch.float32).to(device)
+y_train = torch.tensor(augmented_train_labels, dtype=torch.long).to(device)
+X_test = torch.tensor(test_set_normalized, dtype=torch.float32).to(device)
+y_test = torch.tensor(test_labels, dtype=torch.long).to(device)
 
-perm_mlp_feature_importances = importance_sorted
+# Treinar e avaliar o MLP
+print(
+    f"🧠 Training and evaluating the MLP...\n"
+    f"{'='*50}"
+)
+input_dim = X_train.shape[1]
+hidden_dim = 40
+output_dim = 3
 
-print("Top features sorted:")
-for x, imp in zip(feature_sorted, importance_sorted):
-    print('%s, Score: %f' % (imp, x))
+model = MLP(input_dim, hidden_dim, output_dim).to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0005)
 
-plt.xticks(rotation='vertical')
-plt.bar([x for x in importance_sorted], feature_sorted, width=0.3)
-plt.xlabel('Feature')
-plt.ylabel('Importance')
-plt.title('Feature Importance of MLP Classifier')
-
-# Adjust the layout to prevent labels from being cut off
-plt.tight_layout()
-
-# Display the feature importances plot
-plt.show()
+train_mlp(model, criterion, optimizer, X_train, y_train)
+evaluate_mlp(model, X_test, y_test)

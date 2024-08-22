@@ -128,7 +128,7 @@ if __name__ == '__main__':
     D = Discriminator(input_dim).to(device)
 
     # Ajustar o tamanho do batch com base na memória disponível
-    batch_size = 8192
+    batch_size = 256
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
     # Definir funções de perda e otimizadores
@@ -189,7 +189,7 @@ if __name__ == '__main__':
         print(f'Epoch [{epoch}/{num_epochs}] | D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f} | Time: {epoch_time:.2f}s | Estimated Time Remaining: {estimated_time_remaining:.2f}s')
 
         # Salvar checkpoint
-        if (epoch + 1) % 500 == 0:
+        if (epoch + 1) % 250 == 0:
             save_checkpoint(epoch, G, D, optimizer_G, optimizer_D, g_loss.item(), d_loss.item())
 
     # Gerar exemplos adversariais (da metade do tamanho do conjunto de treinamento)
@@ -223,7 +223,7 @@ if __name__ == '__main__':
     # Inicializar o modelo, critério de perda e otimizador
     model = MLP(input_dim, hidden_dim, output_dim).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.001)  # weight_decay para regularização L2
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0005)  # weight_decay para regularização L2
 
     # Converter os dados para tensores do PyTorch e mover para a GPU
     X_train = train_set_normalized.float().clone().detach().to(device)
@@ -241,7 +241,7 @@ if __name__ == '__main__':
         loss.backward()
         optimizer.step()
         
-        if (epoch+1) % 100 == 0:
+        if (epoch+1) % 500 == 0:
             print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
 
     # Avaliar o modelo
