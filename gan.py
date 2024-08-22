@@ -75,12 +75,12 @@ def train_gan(G, D, train_loader, input_dim, num_epochs=1000, n_critic=1, device
         if start_epoch >= num_epochs:
             print(
                 f"🔙 Checkpoint epoch is greater than or equal to num_epochs. Returning...\n"
-                f"{'='*50}"
+                f"{'='*75}"
             )
             return
         print(
             f"✅ Resuming training from epoch {start_epoch}\n"
-            f"{'='*50}"
+            f"{'='*75}"
         )
     
     for epoch in range(start_epoch, num_epochs):
@@ -122,7 +122,7 @@ def train_gan(G, D, train_loader, input_dim, num_epochs=1000, n_critic=1, device
                 f"🥊 D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f}\n"
                 f"⏳ Time for this epoch: {epoch_duration:.2f} seconds\n"
                 f"⏱️ Estimated remaining time: {remaining_time:.2f} seconds\n"
-                f"{'='*50}"
+                f"{'='*75}"
             )
             save_checkpoint(G, D, optimizer_G, optimizer_D, epoch + 1, checkpoint_dir)
 

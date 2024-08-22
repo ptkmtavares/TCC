@@ -13,9 +13,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Carregar e pré-processar os dados
 print(
-    f"{'='*50}\n"
+    f"{'='*75}\n"
     f"🚀 Loading and preprocessing data...\n"
-    f"{'='*50}"
+    f"{'='*75}"
 )
 selected_data = ['ham', 'spam', 'phishing']
 data, index = getTrainingTestSet('Dataset/index', selected_data, 1.0)
@@ -41,7 +41,7 @@ input_dim = train_set.shape[1]
 # Treinar GAN para phishing
 print(
     f"🎣 Training GAN for phishing...\n"
-    f"{'='*50}"
+    f"{'='*75}"
 )
 phishing_data = train_set[train_labels.cpu().numpy() == 2]
 phishing_labels = train_labels[train_labels.cpu().numpy() == 2]
@@ -55,7 +55,7 @@ train_gan(G_phishing, D_phishing, phishing_loader, input_dim, device=device, che
 # Treinar GAN para spam
 print(
     f"📧 Training GAN for spam...\n"
-    f"{'='*50}"
+    f"{'='*75}"
 )
 spam_data = train_set[train_labels.cpu().numpy() == 1]
 spam_labels = train_labels[train_labels.cpu().numpy() == 1]
@@ -69,7 +69,7 @@ train_gan(G_spam, D_spam, spam_loader, input_dim, device=device, checkpoint_dir=
 # Gerar exemplos adversariais
 print(
     f"🔍 Generating adversarial examples...\n"
-    f"{'='*50}"
+    f"{'='*75}"
 )
 num_samples_phishing = (len(spam_data) * 3) // 2 - len(phishing_data)
 num_samples_spam = len(spam_data) // 2
@@ -80,7 +80,7 @@ generated_spam = generate_adversarial_examples(G_spam, num_samples_spam, input_d
 # Aumentar o conjunto de treinamento
 print(
     f"📈 Augmenting the training set...\n"
-    f"{'='*50}"
+    f"{'='*75}"
 )
 augmented_train_set = np.vstack([train_set, generated_phishing, generated_spam])
 augmented_train_labels = np.hstack([train_labels.cpu().numpy(), np.full(num_samples_phishing, 2), np.full(num_samples_spam, 1)])
@@ -97,7 +97,7 @@ y_test = torch.tensor(test_labels, dtype=torch.long).to(device)
 # Treinar e avaliar o MLP com dados aumentados
 print(
     f"🧠 Training and evaluating the MLP with augmented data...\n"
-    f"{'='*50}"
+    f"{'='*75}"
 )
 input_dim = X_train_augmented.shape[1]
 hidden_dim = 50
@@ -113,7 +113,7 @@ accuracy_augmented = evaluate_mlp(model_augmented, X_test, y_test)
 # Treinar e avaliar o MLP sem dados aumentados
 print(
     f"🧠 Training and evaluating the MLP without augmented data...\n"
-    f"{'='*50}"
+    f"{'='*75}"
 )
 X_train_original = torch.tensor(train_set_normalized.cpu().numpy(), dtype=torch.float32).to(device)
 y_train_original = torch.tensor(train_labels.cpu().numpy(), dtype=torch.long).to(device)
@@ -129,5 +129,5 @@ print(
     f"📊 Comparison of results:\n"
     f"✅ Accuracy with GAN-augmented data: {accuracy_augmented:.2f}%\n"
     f"✅ Accuracy without GAN-augmented data: {accuracy_original:.2f}%\n"
-    f"{'='*50}"
+    f"{'='*75}"
 )

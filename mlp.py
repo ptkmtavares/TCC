@@ -28,7 +28,7 @@ def train_mlp(model, criterion, optimizer, X_train, y_train, num_epochs=10000):
             print(
                 f"🌟 Epoch [{epoch + 1}/{num_epochs}]\n"
                 f"🕒 Loss: {loss.item():.4f}\n"
-                f"{'='*50}"
+                f"{'='*75}"
             )
 
 def evaluate_mlp(model, X_test, y_test):
@@ -40,13 +40,13 @@ def evaluate_mlp(model, X_test, y_test):
         accuracy = (predicted == y_test).sum().item() / y_test.size(0) * 100
         #print(
         #    f"✅ Accuracy for MLP classifier: {accuracy:.2f}%\n"
-        #    f"{'='*50}"
+        #    f"{'='*75}"
         #)
 
         cm = confusion_matrix(y_test.cpu(), predicted.cpu())
         print(
             f"Confusion matrix for MLP classifier:\n"
             f"{cm}\n"
-            f"{'='*50}"
+            f"{'='*75}"
         )
         return accuracy
