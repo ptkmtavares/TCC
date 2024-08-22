@@ -24,7 +24,7 @@ def train_mlp(model, criterion, optimizer, X_train, y_train, num_epochs=10000):
         loss.backward()
         optimizer.step()
         
-        if (epoch+1) % 2500 == 0:
+        if (epoch+1) % (num_epochs // 4) == 0:
             print(
                 f"🌟 Epoch [{epoch + 1}/{num_epochs}]\n"
                 f"🕒 Loss: {loss.item():.4f}\n"

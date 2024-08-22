@@ -63,8 +63,8 @@ def get_latest_checkpoint(checkpoint_dir='checkpoints'):
 
 def train_gan(G, D, train_loader, input_dim, num_epochs=1000, n_critic=1, device='cpu', checkpoint_dir='checkpoints'):
     criterion = nn.BCEWithLogitsLoss()
-    optimizer_G = optim.Adam(G.parameters(), lr=0.0002)
-    optimizer_D = optim.Adam(D.parameters(), lr=0.0001)
+    optimizer_G = optim.Adam(G.parameters(), lr=0.0001)
+    optimizer_D = optim.Adam(D.parameters(), lr=0.00005)
     grad_scaler = torch.amp.GradScaler('cuda')
 
     start_epoch = 0
@@ -116,13 +116,12 @@ def train_gan(G, D, train_loader, input_dim, num_epochs=1000, n_critic=1, device
         epoch_duration = epoch_end_time - epoch_start_time
         remaining_time = (num_epochs - (epoch + 1)) * epoch_duration
 
-        if (epoch + 1) % 250 == 0:
+        if (epoch + 1) % (num_epochs // 4) == 0:
             print(
                 f"🌟 Epoch [{epoch + 1}/{num_epochs}]\n"
                 f"🥊 D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f}\n"
                 f"⏳ Time for this epoch: {epoch_duration:.2f} seconds\n"
-                f"⏱️ Estimated remaining time: "
-                f"{remaining_time:.2f} seconds" if remaining_time < 60 else f"{remaining_time / 60:.2f} minutes\n"
+                f"⏱️ Estimated remaining time: {remaining_time:.2f} seconds\n"
                 f"{'='*50}"
             )
             save_checkpoint(G, D, optimizer_G, optimizer_D, epoch + 1, checkpoint_dir)
