@@ -20,8 +20,15 @@ print(
 selected_data = ['ham', 'spam', 'phishing']
 data, index = getTrainingTestSet('Dataset/index', selected_data, 1.0)
 
-data = np.array(data)
-index = np.array(index)
+# Calcular as contagens de amostras
+sample_counts = np.bincount(index)
+
+print(
+    f"🎣 Phishing samples: {sample_counts[2]}\n"
+    f"📧 Spam samples: {sample_counts[1]}\n"
+    f"📨 Ham samples: {sample_counts[0]}\n"
+    f"{'='*75}"
+)
 
 train_set, test_set, train_labels, test_labels = train_test_split(data, index, train_size=0.75, random_state=9, shuffle=True)
 
@@ -35,6 +42,9 @@ train_labels = torch.tensor(train_labels, dtype=torch.float32).to(device)
 train_dataset = TensorDataset(train_set_normalized, train_labels)
 batch_size = 256
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+
+train_set = np.array(train_set)
+test_set = np.array(test_set)
 
 input_dim = train_set.shape[1]
 
@@ -77,6 +87,12 @@ num_samples_spam = len(spam_data) // 2
 generated_phishing = generate_adversarial_examples(G_phishing, num_samples_phishing, input_dim, device=device)
 generated_spam = generate_adversarial_examples(G_spam, num_samples_spam, input_dim, device=device)
 
+print(
+    f"🎣 Generated phishing examples: {len(generated_phishing)}\n"
+    f"📧 Generated spam examples: {len(generated_spam)}\n"
+    f"{'='*75}"
+)
+
 # Aumentar o conjunto de treinamento
 print(
     f"📈 Augmenting the training set...\n"
@@ -118,6 +134,7 @@ print(
 X_train_original = torch.tensor(train_set_normalized.cpu().numpy(), dtype=torch.float32).to(device)
 y_train_original = torch.tensor(train_labels.cpu().numpy(), dtype=torch.long).to(device)
 
+input_dim = X_train_original.shape[1]
 model_original = MLP(input_dim, hidden_dim, output_dim).to(device)
 optimizer = optim.Adam(model_original.parameters(), lr=0.0005, weight_decay=0.0001)
 
