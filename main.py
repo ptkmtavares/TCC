@@ -71,7 +71,7 @@ print(
     f"🔍 Generating adversarial examples...\n"
     f"{'='*50}"
 )
-num_samples_phishing = len(phishing_data) // 2
+num_samples_phishing = (len(spam_data) * 3) // 2 - len(phishing_data)
 num_samples_spam = len(spam_data) // 2
 
 generated_phishing = generate_adversarial_examples(G_phishing, num_samples_phishing, input_dim, device=device)
