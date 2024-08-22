@@ -89,23 +89,45 @@ scaler = MinMaxScaler(feature_range=(0, 1))
 augmented_train_set_normalized = scaler.fit_transform(augmented_train_set)
 test_set_normalized = scaler.transform(test_set)
 
-X_train = torch.tensor(augmented_train_set_normalized, dtype=torch.float32).to(device)
-y_train = torch.tensor(augmented_train_labels, dtype=torch.long).to(device)
+X_train_augmented = torch.tensor(augmented_train_set_normalized, dtype=torch.float32).to(device)
+y_train_augmented = torch.tensor(augmented_train_labels, dtype=torch.long).to(device)
 X_test = torch.tensor(test_set_normalized, dtype=torch.float32).to(device)
 y_test = torch.tensor(test_labels, dtype=torch.long).to(device)
 
-# Treinar e avaliar o MLP
+# Treinar e avaliar o MLP com dados aumentados
 print(
-    f"🧠 Training and evaluating the MLP...\n"
+    f"🧠 Training and evaluating the MLP with augmented data...\n"
     f"{'='*50}"
 )
-input_dim = X_train.shape[1]
+input_dim = X_train_augmented.shape[1]
 hidden_dim = 40
 output_dim = 3
 
-model = MLP(input_dim, hidden_dim, output_dim).to(device)
+model_augmented = MLP(input_dim, hidden_dim, output_dim).to(device)
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0005)
+optimizer = optim.Adam(model_augmented.parameters(), lr=0.001, weight_decay=0.0005)
 
-train_mlp(model, criterion, optimizer, X_train, y_train)
-evaluate_mlp(model, X_test, y_test)
+train_mlp(model_augmented, criterion, optimizer, X_train_augmented, y_train_augmented)
+accuracy_augmented = evaluate_mlp(model_augmented, X_test, y_test)
+
+# Treinar e avaliar o MLP sem dados aumentados
+print(
+    f"🧠 Training and evaluating the MLP without augmented data...\n"
+    f"{'='*50}"
+)
+X_train_original = torch.tensor(train_set_normalized.cpu().numpy(), dtype=torch.float32).to(device)
+y_train_original = torch.tensor(train_labels.cpu().numpy(), dtype=torch.long).to(device)
+
+model_original = MLP(input_dim, hidden_dim, output_dim).to(device)
+optimizer = optim.Adam(model_original.parameters(), lr=0.001, weight_decay=0.0005)
+
+train_mlp(model_original, criterion, optimizer, X_train_original, y_train_original)
+accuracy_original = evaluate_mlp(model_original, X_test, y_test)
+
+# Comparar os resultados
+print(
+    f"📊 Comparison of results:\n"
+    f"✅ Accuracy with GAN-augmented data: {accuracy_augmented:.2f}%\n"
+    f"✅ Accuracy without GAN-augmented data: {accuracy_original:.2f}%\n"
+    f"{'='*50}"
+)
