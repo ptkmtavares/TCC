@@ -100,12 +100,12 @@ print(
     f"{'='*50}"
 )
 input_dim = X_train_augmented.shape[1]
-hidden_dim = 40
+hidden_dim = 50
 output_dim = 3
 
 model_augmented = MLP(input_dim, hidden_dim, output_dim).to(device)
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model_augmented.parameters(), lr=0.001, weight_decay=0.0005)
+optimizer = optim.Adam(model_augmented.parameters(), lr=0.0005, weight_decay=0.0001)
 
 train_mlp(model_augmented, criterion, optimizer, X_train_augmented, y_train_augmented)
 accuracy_augmented = evaluate_mlp(model_augmented, X_test, y_test)
@@ -119,7 +119,7 @@ X_train_original = torch.tensor(train_set_normalized.cpu().numpy(), dtype=torch.
 y_train_original = torch.tensor(train_labels.cpu().numpy(), dtype=torch.long).to(device)
 
 model_original = MLP(input_dim, hidden_dim, output_dim).to(device)
-optimizer = optim.Adam(model_original.parameters(), lr=0.001, weight_decay=0.0005)
+optimizer = optim.Adam(model_original.parameters(), lr=0.0005, weight_decay=0.0001)
 
 train_mlp(model_original, criterion, optimizer, X_train_original, y_train_original)
 accuracy_original = evaluate_mlp(model_original, X_test, y_test)
