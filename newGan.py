@@ -48,35 +48,6 @@ def load_checkpoint(filename, model_G, model_D, optimizer_G, optimizer_D):
         print(f"No checkpoint found at '{filename}'")
         return 0, None, None
 
-# Função para verificar a memória disponível na GPU
-def get_gpu_memory():
-    if torch.cuda.is_available():
-        return torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0)
-    return 0
-
-# Função para ajustar o tamanho do batch com base na memória disponível
-def adjust_batch_size(initial_batch_size, model, dataset, max_memory_usage=0.8):
-    batch_size = initial_batch_size
-    while batch_size > 1:
-        try:
-            # Criar DataLoader com o tamanho do batch atual
-            data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-            # Tentar uma passagem de treinamento para verificar o uso de memória
-            for data, _ in data_loader:
-                data = data.to(device)
-                output = model(data)
-                break
-            # Se não houver erro de memória, retornar o tamanho do batch atual
-            return batch_size
-        except RuntimeError as e:
-            if 'out of memory' in str(e):
-                # Reduzir o tamanho do batch se ocorrer um erro de memória
-                batch_size = batch_size // 2
-                torch.cuda.empty_cache()
-            else:
-                raise e
-    return batch_size
-
 # Definir a arquitetura do gerador
 class Generator(nn.Module):
     def __init__(self, input_dim, output_dim):
@@ -157,10 +128,7 @@ if __name__ == '__main__':
     D = Discriminator(input_dim).to(device)
 
     # Ajustar o tamanho do batch com base na memória disponível
-    initial_batch_size = 8192
-    batch_size = adjust_batch_size(initial_batch_size, G, train_dataset)
-    print(f'Adjusted batch size: {batch_size}')
-
+    batch_size = 8192
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
     # Definir funções de perda e otimizadores
