@@ -109,6 +109,20 @@ class Discriminator(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+    
+# Definir a MLP usando PyTorch
+class MLP(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super(MLP, self).__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
+    
+    def forward(self, x):
+        out = self.fc1(x)
+        out = self.relu(out)
+        out = self.fc2(out)
+        return out
 
 if __name__ == '__main__':
     # Configurar o método de início para multiprocessing
@@ -217,11 +231,14 @@ if __name__ == '__main__':
     generated_data = G(noise).cpu().detach().numpy()
 
     # Adicionar exemplos adversariais ao conjunto de treinamento
-    augmented_train_set = np.vstack([train_set, generated_data])
+    #augmented_train_set = np.vstack([train_set, generated_data])
 
     # Ajustar os rótulos dos exemplos adversariais
     # Assumindo que os exemplos gerados são falsos e queremos rotulá-los como 'spam' (2)
-    augmented_train_labels = np.hstack([train_labels.cpu().numpy(), np.full(num_samples, 2)])
+    #augmented_train_labels = np.hstack([train_labels.cpu().numpy(), np.full(num_samples, 1)])
+    
+    augmented_train_set = train_set
+    augmented_train_labels = train_labels
 
     # Redefinir o scaler como MinMaxScaler
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -230,13 +247,42 @@ if __name__ == '__main__':
     augmented_train_set_normalized = scaler.fit_transform(augmented_train_set)
     test_set_normalized = scaler.transform(test_set)
 
-    # Treinar o modelo de detecção com o conjunto de dados aumentado
-    mlp = MLPClassifier(hidden_layer_sizes=(40,), activation='tanh', learning_rate='adaptive', solver='adam', alpha=0.001, max_iter=1000, random_state=9)
-    mlp.fit(augmented_train_set_normalized, augmented_train_labels)
+    # Parâmetros do modelo
+    input_dim = train_set_normalized.shape[1]
+    hidden_dim = 40
+    output_dim = 3  # Número de classes (ham, spam, phishing)
 
-    accuracy = 100 * mlp.score(test_set_normalized, test_labels)
-    print('Accuracy for MLP classifier with adversarial examples(%)={accuracy:.2f}'.format(accuracy=accuracy))
+    # Inicializar o modelo, critério de perda e otimizador
+    model = MLP(input_dim, hidden_dim, output_dim).to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.001)  # weight_decay para regularização L2
 
-    pred_labels = mlp.predict(test_set_normalized)
-    cm = confusion_matrix(test_labels, pred_labels)
-    print('Confusion matrix for MLP classifier with adversarial examples:\n', cm)
+    # Converter os dados para tensores do PyTorch e mover para a GPU
+    X_train = train_set_normalized.float().clone().detach().to(device)
+    y_train = train_labels.long().clone().detach().to(device)
+    X_test = torch.from_numpy(test_set_normalized).float().clone().detach().to(device)
+    y_test = torch.from_numpy(test_labels).long().clone().detach().to(device)
+
+    # Treinar o modelo
+    num_epochs = 10000
+    for epoch in range(num_epochs):
+        model.train()
+        optimizer.zero_grad()
+        outputs = model(X_train)
+        loss = criterion(outputs, y_train)
+        loss.backward()
+        optimizer.step()
+        
+        if (epoch+1) % 100 == 0:
+            print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+
+    # Avaliar o modelo
+    model.eval()
+    with torch.no_grad():
+        outputs = model(X_test)
+        _, predicted = torch.max(outputs.data, 1)
+        accuracy = (predicted == y_test).sum().item() / y_test.size(0) * 100
+        print(f'Accuracy for MLP classifier with adversarial examples(%)={accuracy:.2f}')
+
+        cm = confusion_matrix(y_test.cpu(), predicted.cpu())
+        print('Confusion matrix for MLP classifier with adversarial examples:\n', cm)

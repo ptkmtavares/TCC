@@ -305,7 +305,7 @@ def getEmailInfo(email_path):
 def getTrainingTestSet(index_path, values, percent):
     train_set = []
     labels = []
-    dict = {'ham': 1, 'spam': 2, 'phishing': 3}
+    dict = {'ham': 0, 'spam': 1, 'phishing': 2}
     index = open(index_path, 'r', encoding='latin_1').read()
     lines = index.splitlines()
     for line in random.sample(lines, int(len(lines)*percent)):
