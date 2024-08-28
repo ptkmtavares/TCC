@@ -21,14 +21,14 @@ selected_data = ['ham', 'spam', 'phishing']
 data, index = getTrainingTestSet('Dataset/index', selected_data, 1.0)
 
 # Calcular as contagens de amostras
-sample_counts = np.bincount(index)
+#sample_counts = np.bincount(index)
 
-print(
-    f"🎣 Phishing samples: {sample_counts[2]}\n"
-    f"📧 Spam samples: {sample_counts[1]}\n"
-    f"📨 Ham samples: {sample_counts[0]}\n"
-    f"{'='*75}"
-)
+#print(
+#    f"🎣 Phishing samples: {sample_counts[2]}\n"
+#    f"📧 Spam samples: {sample_counts[1]}\n"
+#    f"📨 Ham samples: {sample_counts[0]}\n"
+#    f"{'='*75}"
+#)
 
 train_set, test_set, train_labels, test_labels = train_test_split(data, index, train_size=0.75, random_state=9, shuffle=True)
 
@@ -74,7 +74,7 @@ spam_loader = DataLoader(spam_dataset, batch_size=batch_size, shuffle=True, num_
 
 G_spam = Generator(input_dim, input_dim).to(device)
 D_spam = Discriminator(input_dim).to(device)
-train_gan(G_spam, D_spam, spam_loader, input_dim, device=device, checkpoint_dir='checkpoints/spam/')
+train_gan(G_spam, D_spam, spam_loader, input_dim, device=device, checkpoint_dir='checkpoints/spam/', num_epochs=1250)
 
 # Gerar exemplos adversariais
 print(
