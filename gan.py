@@ -82,6 +82,7 @@ def train_gan(G, D, train_loader, input_dim, num_epochs=1000, n_critic=1, device
             f"✅ Resuming training from epoch {start_epoch}\n"
             f"{'='*75}"
         )
+    save_interval = (num_epochs - start_epoch) // 4
     
     for epoch in range(start_epoch, num_epochs):
         epoch_start_time = time.time()
@@ -116,7 +117,7 @@ def train_gan(G, D, train_loader, input_dim, num_epochs=1000, n_critic=1, device
         epoch_duration = epoch_end_time - epoch_start_time
         remaining_time = (num_epochs - (epoch + 1)) * epoch_duration
 
-        if (epoch + 1) % (num_epochs // 4) == 0:
+        if (epoch + 1) % save_interval == 0 or (epoch + 1) == num_epochs:
             print(
                 f"🌟 Epoch [{epoch + 1}/{num_epochs}]\n"
                 f"🥊 D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f}\n"
