@@ -2,6 +2,7 @@ from email.parser import HeaderParser
 import re
 import email.utils as emailUtils
 import random
+import concurrent.futures
 
 parser = HeaderParser()
 
@@ -302,17 +303,39 @@ def getEmailInfo(email_path):
     email_dict['hop_count'] = hops
     return email_dict  
 
+def process_email(line, email_cache, label_dict):
+    label, email_path = line.split(' ')
+    
+    if email_path not in email_cache:
+        email_info = getEmailInfo(email_path)
+        if email_info == -1:
+            return None, None
+        email_cache[email_path] = getFeaturesArray(email_info)
+    
+    return email_cache[email_path], label_dict[label]
+
 def getTrainingTestSet(index_path, values, percent):
+    with open(index_path, 'r', encoding='latin_1') as f:
+        lines = f.readlines()
+
+    lines = [line.strip() for line in lines if line.split(' ')[0] in values]
+    random.shuffle(lines)
+
+    num_samples = int(len(lines) * percent)
+    selected_lines = lines[:num_samples]
+
     train_set = []
     labels = []
-    dict = {'ham': 0, 'spam': 1, 'phishing': 2}
-    index = open(index_path, 'r', encoding='latin_1').read()
-    lines = index.splitlines()
-    for line in random.sample(lines, int(len(lines)*percent)):
-        line_split = line.split(' ')
-        email_path = line_split[1]
-        email_info = getEmailInfo(email_path)
-        if line_split[0] in values and email_info != -1:
-            train_set.append(getFeaturesArray(email_info))
-            labels.append(dict[line_split[0]])
+    label_dict = {'ham': 0, 'spam': 1, 'phishing': 2}
+    email_cache = {}
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_email, line, email_cache, label_dict) for line in selected_lines]
+        
+        for future in concurrent.futures.as_completed(futures):
+            features, label = future.result()
+            if features is not None and label is not None:
+                train_set.append(features)
+                labels.append(label)
+    
     return train_set, labels
