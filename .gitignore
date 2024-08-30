@@ -5,3 +5,4 @@ Dataset/index
 __pycache__/*
 checkpoints/phishing/*
 checkpoints/spam/*
+checkpoints/ham/*
