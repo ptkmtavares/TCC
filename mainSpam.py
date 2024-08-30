@@ -21,14 +21,13 @@ selected_data = ['ham', 'spam']
 data, index = getTrainingTestSet('Dataset/index', selected_data, 1.0)
 
 # Calcular as contagens de amostras
-#sample_counts = np.bincount(index)
+sample_counts = np.bincount(index)
 
-#print(
-#    f"🎣 Phishing samples: {sample_counts[2]}\n"
-#    f"📧 Spam samples: {sample_counts[1]}\n"
-#    f"📨 Ham samples: {sample_counts[0]}\n"
-#    f"{'='*75}"
-#)
+print(
+    f"📧 Spam samples: {sample_counts[1]}\n"
+    f"📨 Ham samples: {sample_counts[0]}\n"
+    f"{'='*75}"
+)
 
 train_set, test_set, train_labels, test_labels = train_test_split(data, index, train_size=0.75, random_state=9, shuffle=True)
 
@@ -48,19 +47,19 @@ test_set = np.array(test_set)
 
 input_dim = train_set.shape[1]
 
-# Treinar GAN para spam
+# Treinar GAN para ham
 print(
-    f"📧 Training GAN for spam...\n"
+    f"📧 Training GAN for ham...\n"
     f"{'='*75}"
 )
-spam_data = train_set[train_labels.cpu().numpy() == 1]
-spam_labels = train_labels[train_labels.cpu().numpy() == 1]
-spam_dataset = TensorDataset(torch.tensor(spam_data, dtype=torch.float32).to(device), spam_labels)
-spam_loader = DataLoader(spam_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+ham_data = train_set[train_labels.cpu().numpy() == 0]
+ham_labels = train_labels[train_labels.cpu().numpy() == 0]
+ham_dataset = TensorDataset(torch.tensor(ham_data, dtype=torch.float32).to(device), ham_labels)
+ham_loader = DataLoader(ham_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
-G_spam = Generator(input_dim, input_dim).to(device)
-D_spam = Discriminator(input_dim).to(device)
-train_gan(G_spam, D_spam, spam_loader, input_dim, device=device, checkpoint_dir='checkpoints/spam/', num_epochs=3000)
+G_ham = Generator(input_dim, input_dim).to(device)
+D_ham = Discriminator(input_dim).to(device)
+train_gan(G_ham, D_ham, ham_loader, input_dim, device=device, checkpoint_dir='checkpoints/ham/', num_epochs=3000)
 
 # Gerar exemplos adversariais
 print(
@@ -68,12 +67,13 @@ print(
     f"{'='*75}"
 )
 
-num_samples_spam = len(spam_data) // 2
-
-generated_spam = generate_adversarial_examples(G_spam, num_samples_spam, input_dim, device=device)
+spam_data = train_set[train_labels.cpu().numpy() == 1]
+num_samples_ham = len(spam_data) - len(ham_data)
+    
+generated_ham = generate_adversarial_examples(G_ham, num_samples_ham, input_dim, device=device)
 
 print(
-    f"📧 Generated spam examples: {len(generated_spam)}\n"
+    f"📧 Generated ham examples: {num_samples_ham}\n"
     f"{'='*75}"
 )
 
@@ -82,8 +82,8 @@ print(
     f"📈 Augmenting the training set...\n"
     f"{'='*75}"
 )
-augmented_train_set = np.vstack([train_set, generated_spam])
-augmented_train_labels = np.hstack([train_labels.cpu().numpy(), np.full(num_samples_spam, 1)])
+augmented_train_set = np.vstack([train_set, generated_ham])
+augmented_train_labels = np.hstack([train_labels.cpu().numpy(), np.full(num_samples_ham, 1)])
 
 scaler = MinMaxScaler(feature_range=(0, 1))
 augmented_train_set_normalized = scaler.fit_transform(augmented_train_set)

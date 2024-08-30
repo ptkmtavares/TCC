@@ -21,14 +21,13 @@ selected_data = ['ham', 'phishing']
 data, index = getTrainingTestSet('Dataset/index', selected_data, 1.0)
 
 # Calcular as contagens de amostras
-#sample_counts = np.bincount(index)
+sample_counts = np.bincount(index)
 
-#print(
-#    f"🎣 Phishing samples: {sample_counts[2]}\n"
-#    f"📧 Spam samples: {sample_counts[1]}\n"
-#    f"📨 Ham samples: {sample_counts[0]}\n"
-#    f"{'='*75}"
-#)
+print(
+    f"🎣 Phishing samples: {sample_counts[2]}\n"
+    f"📨 Ham samples: {sample_counts[0]}\n"
+    f"{'='*75}"
+)
 
 train_set, test_set, train_labels, test_labels = train_test_split(data, index, train_size=0.75, random_state=9, shuffle=True)
 
@@ -67,12 +66,20 @@ print(
     f"🔍 Generating adversarial examples...\n"
     f"{'='*75}"
 )
-num_samples_phishing = len(phishing_data) // 2
+ham_data = train_set[train_labels.cpu().numpy() == 0]
+num_samples_phishing = len(ham_data) - len(phishing_data)
+
+if num_samples_phishing <= 0:
+    print(
+        f"🚫 Number of phishing samples is greater than or equal to the number of ham samples. Defaulting to 1000...\n"
+        f"{'='*75}"
+    )
+    num_samples_phishing = 1000
 
 generated_phishing = generate_adversarial_examples(G_phishing, num_samples_phishing, input_dim, device=device)
 
 print(
-    f"🎣 Generated phishing examples: {len(generated_phishing)}\n"
+    f"🎣 Generated phishing examples: {num_samples_phishing}\n"
     f"{'='*75}"
 )
 
