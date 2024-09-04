@@ -339,3 +339,25 @@ def getTrainingTestSet(index_path, values, percent):
                 labels.append(label)
     
     return train_set, labels
+
+def getExampleTestSet(index_path):
+    with open(index_path, 'r', encoding='latin_1') as f:
+        lines = f.readlines()
+
+    lines = [line.strip() for line in lines]
+
+    test_set = []
+    labels = []
+    label_dict = {'ham': 0, 'spam': 1, 'phishing': 2}
+    email_cache = {}
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_email, line, email_cache, label_dict) for line in lines]
+        
+        for future in concurrent.futures.as_completed(futures):
+            features, label = future.result()
+            if features is not None and label is not None:
+                test_set.append(features)
+                labels.append(label)
+    
+    return test_set, labels
