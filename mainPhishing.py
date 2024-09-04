@@ -8,6 +8,7 @@ from dataExtractor import getExampleTestSet, getTrainingTestSet
 from torch.utils.data import DataLoader, TensorDataset
 from mlp import MLP, predict_mlp, train_mlp, evaluate_mlp
 from gan import Generator, Discriminator, train_gan, generate_adversarial_examples
+from rayParam import getHyperparameters
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -39,7 +40,7 @@ train_set_normalized = torch.tensor(train_set_normalized, dtype=torch.float32).t
 train_labels = torch.tensor(train_labels, dtype=torch.float32).to(device)
 
 train_dataset = TensorDataset(train_set_normalized, train_labels)
-batch_size = 256
+batch_size = 1024
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
 train_set = np.array(train_set)
@@ -59,7 +60,7 @@ phishing_loader = DataLoader(phishing_dataset, batch_size=batch_size, shuffle=Tr
 
 G_phishing = Generator(input_dim, input_dim).to(device)
 D_phishing = Discriminator(input_dim).to(device)
-train_gan(G_phishing, D_phishing, phishing_loader, input_dim, device=device, checkpoint_dir='checkpoints/phishing/', num_epochs=5000)
+train_gan(G_phishing, D_phishing, phishing_loader, input_dim, device=device, checkpoint_dir='checkpoints/phishing/', num_epochs=7500)
 
 # Gerar exemplos adversariais
 print(
@@ -105,15 +106,25 @@ print(
     f"🧠 Training and evaluating the MLP with augmented data...\n"
     f"{'='*75}"
 )
+
+best_config = getHyperparameters(augmented_train_set, test_set, augmented_train_labels, test_labels)
+print(
+    f"🔧 Best hyperparameters found:\n"
+    f"Hidden dimension: {best_config['hidden_dim']}\n"
+    f"Learning rate: {best_config['lr']}\n"
+    f"Weight decay: {best_config['weight_decay']}\n"
+    f"Number of epochs: {best_config['num_epochs']}\n"
+    f"Patience: {best_config['patience']}\n"
+    f"{'='*75}"
+)
 input_dim = X_train_augmented.shape[1]
-hidden_dim = 50
 output_dim = 3
 
-model_augmented = MLP(input_dim, hidden_dim, output_dim).to(device)
+model_augmented = MLP(input_dim, best_config["hidden_dim"], output_dim).to(device)
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model_augmented.parameters(), lr=0.005, weight_decay=0.001)
+optimizer = optim.Adam(model_augmented.parameters(), lr=best_config["lr"], weight_decay=best_config["weight_decay"])
 
-train_mlp(model_augmented, criterion, optimizer, X_train_augmented, y_train_augmented, X_test, y_test)
+train_mlp(model_augmented, criterion, optimizer, X_train_augmented, y_train_augmented, X_test, y_test, num_epochs=best_config["num_epochs"], patience=best_config["patience"])
 accuracy_augmented = evaluate_mlp(model_augmented, X_test, y_test)
 
 # Treinar e avaliar o MLP sem dados aumentados
@@ -124,11 +135,21 @@ print(
 X_train_original = torch.tensor(train_set_normalized.cpu().numpy(), dtype=torch.float32).to(device)
 y_train_original = torch.tensor(train_labels.cpu().numpy(), dtype=torch.long).to(device)
 
+best_config = getHyperparameters(train_set_normalized.cpu().numpy(), test_set, train_labels.cpu().numpy(), test_labels)
+print(
+    f"🔧 Best hyperparameters found:\n"
+    f"Hidden dimension: {best_config['hidden_dim']}\n"
+    f"Learning rate: {best_config['lr']}\n"
+    f"Weight decay: {best_config['weight_decay']}\n"
+    f"Number of epochs: {best_config['num_epochs']}\n"
+    f"Patience: {best_config['patience']}\n"
+    f"{'='*75}"
+)
 input_dim = X_train_original.shape[1]
-model_original = MLP(input_dim, hidden_dim, output_dim).to(device)
-optimizer = optim.Adam(model_original.parameters(), lr=0.005, weight_decay=0.01)
+model_original = MLP(input_dim, best_config["hidden_dim"], output_dim).to(device)
+optimizer = optim.Adam(model_original.parameters(), lr=best_config["lr"], weight_decay=best_config["weight_decay"])
 
-train_mlp(model_original, criterion, optimizer, X_train_original, y_train_original, X_test, y_test)
+train_mlp(model_original, criterion, optimizer, X_train_original, y_train_original, X_test, y_test, num_epochs=best_config["num_epochs"], patience=best_config["patience"])
 accuracy_original = evaluate_mlp(model_original, X_test, y_test)
 
 # Comparar os resultados
@@ -147,13 +168,12 @@ print(
 )
 
 example_data, example_index = getExampleTestSet('Dataset/exampleIndex')
-print(example_data)
 example_test_set_normalized = scaler.transform(example_data)
 X_example_test = torch.tensor(example_test_set_normalized, dtype=torch.float32).to(device)
 
 predicted_example_label, label_probabilities = predict_mlp(model_augmented, X_example_test)
 
-label_dict = {0: 'ham', 1: 'phishing', 2: 'phishing'}
+label_dict = {0: 'ham', 1: 'spam', 2: 'phishing'}
 predicted_labels_readable = [label_dict[label.item()] for label in predicted_example_label]
 expected_labels_readable = [label_dict[label] for label in example_index]
 

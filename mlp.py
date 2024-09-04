@@ -8,7 +8,7 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.5)  # Dropout com probabilidade de 50%
+        self.dropout = nn.Dropout(p=0.5)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
     
     def forward(self, x):
@@ -26,7 +26,7 @@ def predict_mlp(model, X_test):
         _, predicted = torch.max(outputs.data, 1)
         return predicted, probabilities
 
-def train_mlp(model, criterion, optimizer, X_train, y_train, X_val, y_val, num_epochs=10000, patience=10):
+def train_mlp(model, criterion, optimizer, X_train, y_train, X_val, y_val, num_epochs=10000, patience=15, printInfo=True):
     best_val_loss = float('inf')
     patience_counter = 0
 
@@ -50,18 +50,20 @@ def train_mlp(model, criterion, optimizer, X_train, y_train, X_val, y_val, num_e
             patience_counter += 1
 
         if patience_counter >= patience:
-            print(f"Early stopping at epoch {epoch + 1}")
+            if (printInfo): print(f"Early stopping at epoch {epoch + 1}")
             break
 
         if (epoch + 1) % (num_epochs // 4) == 0:
-            print(
+            if (printInfo): print(
                 f"🌟 Epoch [{epoch + 1}/{num_epochs}]\n"
                 f"🕒 Loss: {loss.item():.4f}\n"
                 f"🕒 Validation Loss: {val_loss.item():.4f}\n"
                 f"{'='*75}"
             )
 
-def evaluate_mlp(model, X_test, y_test):
+    return best_val_loss.item()
+
+def evaluate_mlp(model, X_test, y_test, printInfo=True):
     model.eval()
     with torch.no_grad():
         outputs = model(X_test)
@@ -74,7 +76,7 @@ def evaluate_mlp(model, X_test, y_test):
         #)
 
         cm = confusion_matrix(y_test.cpu(), predicted.cpu())
-        print(
+        if (printInfo): print(
             f"Confusion matrix for MLP classifier:\n"
             f"{cm}\n"
             f"{'='*75}"

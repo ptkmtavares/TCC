@@ -4,9 +4,9 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
-from dataExtractor import getTrainingTestSet
+from dataExtractor import getTrainingTestSet, getExampleTestSet
 from torch.utils.data import DataLoader, TensorDataset
-from mlp import MLP, train_mlp, evaluate_mlp
+from mlp import MLP, train_mlp, evaluate_mlp, predict_mlp
 from gan import Generator, Discriminator, train_gan, generate_adversarial_examples
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -74,7 +74,7 @@ spam_loader = DataLoader(spam_dataset, batch_size=batch_size, shuffle=True, num_
 
 G_spam = Generator(input_dim, input_dim).to(device)
 D_spam = Discriminator(input_dim).to(device)
-train_gan(G_spam, D_spam, spam_loader, input_dim, device=device, checkpoint_dir='checkpoints/spam/', num_epochs=1250)
+train_gan(G_spam, D_spam, spam_loader, input_dim, device=device, checkpoint_dir='checkpoints/spam/', num_epochs=3000)
 
 # Gerar exemplos adversariais
 print(

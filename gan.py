@@ -63,8 +63,8 @@ def get_latest_checkpoint(checkpoint_dir='checkpoints'):
 
 def train_gan(G, D, train_loader, input_dim, num_epochs=1000, n_critic=1, device='cpu', checkpoint_dir='checkpoints'):
     criterion = nn.BCEWithLogitsLoss()
-    optimizer_G = optim.Adam(G.parameters(), lr=0.0001)
-    optimizer_D = optim.Adam(D.parameters(), lr=0.00005)
+    optimizer_G = optim.Adam(G.parameters(), lr=0.0003)
+    optimizer_D = optim.Adam(D.parameters(), lr=0.0003)
     grad_scaler = torch.amp.GradScaler('cuda')
 
     start_epoch = 0
