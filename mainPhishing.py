@@ -2,188 +2,197 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
-from dataExtractor import getExampleTestSet, getTrainingTestSet
-from torch.utils.data import DataLoader, TensorDataset
+import logging
+from typing import Tuple
+from dataExtractor import get_example_test_set, get_training_test_set
+from torch.utils.data import DataLoader, TensorDataset, random_split
 from mlp import MLP, predict_mlp, train_mlp, evaluate_mlp
 from gan import Generator, Discriminator, train_gan, generate_adversarial_examples
-from rayParam import getHyperparameters
+from rayParam import get_hyperparameters
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+BATCH_SIZE = 1024
+TRAIN_SPLIT = 0.75
+NUM_EPOCHS_GAN = 5625
+CHECKPOINT_DIR = 'checkpoints/phishing/'
+INDEX_DIR = 'Dataset/index'
+EXAMPLE_DIR = 'Dataset/exampleIndex'
+DELIMITER = '='*75
+LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s\n'
 
-# Carregar e pré-processar os dados
-print(
-    f"{'='*75}\n"
-    f"🚀 Loading and preprocessing data...\n"
-    f"{'='*75}"
-)
-selected_data = ['ham', 'phishing']
-data, index = getTrainingTestSet('Dataset/index', selected_data, 1.0)
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+torch.backends.cudnn.benchmark = True
+torch.cuda.empty_cache()
 
-# Calcular as contagens de amostras
-sample_counts = np.bincount(index)
+def load_and_preprocess_data() -> Tuple[TensorDataset, TensorDataset, torch.Tensor, torch.Tensor, int]:
+    try:
+        logging.info(
+            f"\n{DELIMITER}\n"
+            f"Loading and preprocessing data...\n"
+            f"{DELIMITER}"
+        )
+        selected_data = ['ham', 'phishing']
+        data, index = get_training_test_set(INDEX_DIR, selected_data, 1.0)
 
-print(
-    f"🎣 Phishing samples: {sample_counts[2]}\n"
-    f"📨 Ham samples: {sample_counts[0]}\n"
-    f"{'='*75}"
-)
+        sample_counts = np.bincount(index)
+        logging.info(
+            f"\nPhishing samples: {sample_counts[1]}\n"
+            f"Ham samples: {sample_counts[0]}\n"
+            f"{DELIMITER}"
+        )
 
-train_set, test_set, train_labels, test_labels = train_test_split(data, index, train_size=0.75, random_state=9, shuffle=True)
+        data_tensor = torch.tensor(data, dtype=torch.float32, pin_memory=True)
+        index_tensor = torch.tensor(index, dtype=torch.float32, pin_memory=True)
 
-scaler = MinMaxScaler(feature_range=(0, 1))
-train_set_normalized = scaler.fit_transform(train_set)
-test_set_normalized = scaler.transform(test_set)
+        dataset = TensorDataset(data_tensor, index_tensor)
+        train_size = int(TRAIN_SPLIT * len(dataset))
+        test_size = len(dataset) - train_size
+        train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
-train_set_normalized = torch.tensor(train_set_normalized, dtype=torch.float32).to(device)
-train_labels = torch.tensor(train_labels, dtype=torch.float32).to(device)
+        return train_dataset, test_dataset, data_tensor, index_tensor, data_tensor.shape[1]
+    finally:
+        torch.cuda.empty_cache()
 
-train_dataset = TensorDataset(train_set_normalized, train_labels)
-batch_size = 1024
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
-
-train_set = np.array(train_set)
-test_set = np.array(test_set)
-
-input_dim = train_set.shape[1]
-
-# Treinar GAN para phishing
-print(
-    f"🎣 Training GAN for phishing...\n"
-    f"{'='*75}"
-)
-phishing_data = train_set[train_labels.cpu().numpy() == 2]
-phishing_labels = train_labels[train_labels.cpu().numpy() == 2]
-phishing_dataset = TensorDataset(torch.tensor(phishing_data, dtype=torch.float32).to(device), phishing_labels)
-phishing_loader = DataLoader(phishing_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
-
-G_phishing = Generator(input_dim, input_dim).to(device)
-D_phishing = Discriminator(input_dim).to(device)
-train_gan(G_phishing, D_phishing, phishing_loader, input_dim, device=device, checkpoint_dir='checkpoints/phishing/', num_epochs=7500)
-
-# Gerar exemplos adversariais
-print(
-    f"🔍 Generating adversarial examples...\n"
-    f"{'='*75}"
-)
-ham_data = train_set[train_labels.cpu().numpy() == 0]
-num_samples_phishing = len(ham_data) - len(phishing_data)
-
-if num_samples_phishing <= 0:
-    print(
-        f"🚫 Number of phishing samples is greater than or equal to the number of ham samples. Defaulting to 1000...\n"
-        f"{'='*75}"
+def setup_gan(train_set: torch.Tensor, train_labels: torch.Tensor, input_dim: int) -> Generator:
+    logging.info(
+        f"\nTraining GAN for phishing...\n"
+        f"{DELIMITER}"
     )
-    num_samples_phishing = 1000
+    phishing_data = train_set[train_labels.cpu().numpy() == 1]
+    phishing_labels = train_labels[train_labels.cpu().numpy() == 1]
+    phishing_dataset = TensorDataset(phishing_data.to(DEVICE), phishing_labels)
+    phishing_loader = DataLoader(phishing_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 
-generated_phishing = generate_adversarial_examples(G_phishing, num_samples_phishing, input_dim, device=device)
+    g_phishing = Generator(input_dim, input_dim).to(DEVICE)
+    d_phishing = Discriminator(input_dim).to(DEVICE)
+    train_gan(g_phishing, d_phishing, phishing_loader, input_dim, device=DEVICE, checkpoint_dir=CHECKPOINT_DIR, num_epochs=NUM_EPOCHS_GAN)
 
-print(
-    f"🎣 Generated phishing examples: {num_samples_phishing}\n"
-    f"{'='*75}"
-)
+    return g_phishing
 
-# Aumentar o conjunto de treinamento
-print(
-    f"📈 Augmenting the training set...\n"
-    f"{'='*75}"
-)
-augmented_train_set = np.vstack([train_set, generated_phishing])
-augmented_train_labels = np.hstack([train_labels.cpu().numpy(), np.full(num_samples_phishing, 2)])
-
-scaler = MinMaxScaler(feature_range=(0, 1))
-augmented_train_set_normalized = scaler.fit_transform(augmented_train_set)
-test_set_normalized = scaler.transform(test_set)
-
-X_train_augmented = torch.tensor(augmented_train_set_normalized, dtype=torch.float32).to(device)
-y_train_augmented = torch.tensor(augmented_train_labels, dtype=torch.long).to(device)
-X_test = torch.tensor(test_set_normalized, dtype=torch.float32).to(device)
-y_test = torch.tensor(test_labels, dtype=torch.long).to(device)
-
-# Treinar e avaliar o MLP com dados aumentados
-print(
-    f"🧠 Training and evaluating the MLP with augmented data...\n"
-    f"{'='*75}"
-)
-
-best_config = getHyperparameters(augmented_train_set, test_set, augmented_train_labels, test_labels)
-print(
-    f"🔧 Best hyperparameters found:\n"
-    f"Hidden dimension: {best_config['hidden_dim']}\n"
-    f"Learning rate: {best_config['lr']}\n"
-    f"Weight decay: {best_config['weight_decay']}\n"
-    f"Number of epochs: {best_config['num_epochs']}\n"
-    f"Patience: {best_config['patience']}\n"
-    f"{'='*75}"
-)
-input_dim = X_train_augmented.shape[1]
-output_dim = 3
-
-model_augmented = MLP(input_dim, best_config["hidden_dim"], output_dim).to(device)
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model_augmented.parameters(), lr=best_config["lr"], weight_decay=best_config["weight_decay"])
-
-train_mlp(model_augmented, criterion, optimizer, X_train_augmented, y_train_augmented, X_test, y_test, num_epochs=best_config["num_epochs"], patience=best_config["patience"])
-accuracy_augmented = evaluate_mlp(model_augmented, X_test, y_test)
-
-# Treinar e avaliar o MLP sem dados aumentados
-print(
-    f"🧠 Training and evaluating the MLP without augmented data...\n"
-    f"{'='*75}"
-)
-X_train_original = torch.tensor(train_set_normalized.cpu().numpy(), dtype=torch.float32).to(device)
-y_train_original = torch.tensor(train_labels.cpu().numpy(), dtype=torch.long).to(device)
-
-best_config = getHyperparameters(train_set_normalized.cpu().numpy(), test_set, train_labels.cpu().numpy(), test_labels)
-print(
-    f"🔧 Best hyperparameters found:\n"
-    f"Hidden dimension: {best_config['hidden_dim']}\n"
-    f"Learning rate: {best_config['lr']}\n"
-    f"Weight decay: {best_config['weight_decay']}\n"
-    f"Number of epochs: {best_config['num_epochs']}\n"
-    f"Patience: {best_config['patience']}\n"
-    f"{'='*75}"
-)
-input_dim = X_train_original.shape[1]
-model_original = MLP(input_dim, best_config["hidden_dim"], output_dim).to(device)
-optimizer = optim.Adam(model_original.parameters(), lr=best_config["lr"], weight_decay=best_config["weight_decay"])
-
-train_mlp(model_original, criterion, optimizer, X_train_original, y_train_original, X_test, y_test, num_epochs=best_config["num_epochs"], patience=best_config["patience"])
-accuracy_original = evaluate_mlp(model_original, X_test, y_test)
-
-# Comparar os resultados
-print(
-    f"📊 Comparison of results:\n"
-    f"✅ Accuracy with GAN-augmented data: {accuracy_augmented:.2f}%\n"
-    f"✅ Accuracy without GAN-augmented data: {accuracy_original:.2f}%\n"
-    f"Accuracy gain: {accuracy_augmented - accuracy_original:.2f}%\n"
-    f"{'='*75}"
-)
-
-# Testar com exemplos de teste
-print(
-    f"🔬 Testing with example test set...\n"
-    f"{'='*75}"
-)
-
-example_data, example_index = getExampleTestSet('Dataset/exampleIndex')
-example_test_set_normalized = scaler.transform(example_data)
-X_example_test = torch.tensor(example_test_set_normalized, dtype=torch.float32).to(device)
-
-predicted_example_label, label_probabilities = predict_mlp(model_augmented, X_example_test)
-
-label_dict = {0: 'ham', 1: 'spam', 2: 'phishing'}
-predicted_labels_readable = [label_dict[label.item()] for label in predicted_example_label]
-expected_labels_readable = [label_dict[label] for label in example_index]
-
-print(
-    f"🔖 Predicted labels for example test set:"
-)
-for i, (label, prob) in enumerate(zip(predicted_example_label, label_probabilities)):
-    print(
-        f"The email of index {i} is {[f'{label_dict[j]}: {prob:.4f}' for j, prob in enumerate(prob.cpu().numpy())]} (expected: {expected_labels_readable[i]})"
+def generate_and_augment_data(g_phishing: Generator, train_set: torch.Tensor, train_labels: torch.Tensor, input_dim: int) -> Tuple[np.ndarray, np.ndarray]:
+    logging.info(
+        f"\nGenerating adversarial examples...\n"
+        f"{DELIMITER}"
     )
-print(
-    f"{'='*75}"
-)
+    ham_data = train_set[train_labels.cpu().numpy() == 0]
+    phishing_data = train_set[train_labels.cpu().numpy() == 1]
+    num_samples_phishing = len(ham_data) - len(phishing_data)
+
+    if num_samples_phishing <= 0:
+        logging.warning(
+            f"\nNumber of phishing samples is greater than or equal to the number of ham samples. Defaulting to 1000...\n"
+            f"{DELIMITER}"
+        )
+        num_samples_phishing = 1000
+
+    generated_phishing = generate_adversarial_examples(g_phishing, num_samples_phishing, input_dim, device=DEVICE)
+    logging.info(
+        f"\nGenerated phishing examples: {num_samples_phishing}\n"
+        f"{DELIMITER}"
+    )
+
+    logging.info(
+        f"\nAugmenting the training set...\n"
+        f"{DELIMITER}"
+    )
+    augmented_train_set = np.vstack([train_set.cpu().numpy(), generated_phishing])
+    augmented_train_labels = np.hstack([train_labels.cpu().numpy(), np.full(num_samples_phishing, 1)])
+
+    return augmented_train_set, augmented_train_labels
+
+def train_and_evaluate_mlp(train_set: np.ndarray, train_labels: np.ndarray, augmented_train_set: np.ndarray, augmented_train_labels: np.ndarray, test_set: np.ndarray, test_labels: np.ndarray) -> Tuple[MLP, float, float]:
+    try:
+        logging.info(
+            f"\nTraining and evaluating the MLP with augmented data...\n"
+            f"{DELIMITER}"
+        )
+        example_data, example_index, _ = get_example_test_set(EXAMPLE_DIR)
+        best_config = get_hyperparameters(augmented_train_set, test_set, augmented_train_labels, test_labels, example_data=example_data, example_labels=example_index, config='phishing')
+        logging.info(
+            f"\nBest hyperparameters found:\n"
+            f"L1: {best_config['l1_lambda']}\n"
+            f"L2: {best_config['l2_lambda']}\n"
+            f"Hidden dimension 1: {best_config['hidden_dim1']}\n"
+            f"Hidden dimension 2: {best_config['hidden_dim1']}\n"
+            f"Learning rate: {best_config['lr']}\n"
+            f"Weight decay: {best_config['weight_decay']}\n"
+            f"Number of epochs: {best_config['num_epochs']}\n"
+            f"Patience: {best_config['patience']}\n"
+            f"{DELIMITER}"
+        )
+
+        X_train_augmented = torch.tensor(augmented_train_set, dtype=torch.float32).to(DEVICE)
+        y_train_augmented = torch.tensor(augmented_train_labels, dtype=torch.long).to(DEVICE)
+        X_test = torch.tensor(test_set, dtype=torch.float32).to(DEVICE)
+        y_test = torch.tensor(test_labels, dtype=torch.long).to(DEVICE)
+
+        input_dim = X_train_augmented.shape[1]
+        output_dim = 2
+
+        model_augmented = MLP(input_dim, best_config["hidden_dim1"], best_config["hidden_dim2"], output_dim, l1_lambda=best_config['l1_lambda'], l2_lambda=best_config['l2_lambda'], dropout=best_config['dropout']).to(DEVICE)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model_augmented.parameters(), lr=best_config["lr"], weight_decay=best_config["weight_decay"])
+        
+        train_mlp(model_augmented, criterion, optimizer, X_train_augmented, y_train_augmented, X_test, y_test, num_epochs=best_config["num_epochs"], patience=best_config["patience"])
+        accuracy_augmented = evaluate_mlp(model_augmented, X_test, y_test)
+
+        logging.info(
+            f"\nTraining and evaluating the MLP without augmented data...\n"
+            f"{DELIMITER}"
+        )
+        X_train_original = torch.tensor(train_set, dtype=torch.float32).to(DEVICE)
+        y_train_original = torch.tensor(train_labels, dtype=torch.long).to(DEVICE)
+
+        model_original = MLP(input_dim, best_config["hidden_dim1"], best_config["hidden_dim2"], output_dim, l1_lambda=best_config['l1_lambda'], l2_lambda=best_config['l2_lambda'], dropout=best_config['dropout']).to(DEVICE)
+        optimizer = optim.Adam(model_original.parameters(), lr=best_config["lr"], weight_decay=best_config["weight_decay"])
+
+        train_mlp(model_original, criterion, optimizer, X_train_original, y_train_original, X_test, y_test, num_epochs=best_config["num_epochs"], patience=best_config["patience"])
+        accuracy_original = evaluate_mlp(model_original, X_test, y_test)
+
+        return model_augmented, accuracy_augmented, accuracy_original
+    finally:
+        torch.cuda.empty_cache()
+
+def main():
+    try:
+        train_dataset, test_dataset, data_tensor, index_tensor, input_dim = load_and_preprocess_data()
+
+        train_set = data_tensor[train_dataset.indices]
+        test_set = data_tensor[test_dataset.indices]
+        train_labels = index_tensor[train_dataset.indices]
+        test_labels = index_tensor[test_dataset.indices]
+
+        g_phishing = setup_gan(train_set, train_labels, input_dim)
+        augmented_train_set, augmented_train_labels = generate_and_augment_data(g_phishing, train_set, train_labels, input_dim)
+        mlp_augmented, accuracy_augmented, accuracy_original = train_and_evaluate_mlp(train_set.cpu().numpy(), train_labels.cpu().numpy(), augmented_train_set, augmented_train_labels, test_set.cpu().numpy(), test_labels.cpu().numpy())
+
+        logging.info(
+            f"\nComparison of results:\n"
+            f"Accuracy with GAN-augmented data: {accuracy_augmented:.2f}%\n"
+            f"Accuracy without GAN-augmented data: {accuracy_original:.2f}%\n"
+            f"Accuracy gain: {accuracy_augmented - accuracy_original:.2f}%\n"
+            f"{DELIMITER}"
+        )
+
+        logging.info("Testing with example test set...")
+        example_data, example_index, email_paths = get_example_test_set(EXAMPLE_DIR)
+        X_example_test = torch.tensor(example_data, dtype=torch.float32).to(DEVICE)
+
+        predicted_example_label, label_probabilities = predict_mlp(mlp_augmented, X_example_test)
+        expected_labels_readable = ['phishing' if label in [1] else 'ham' for label in example_index]
+        
+        for i, (_, prob) in enumerate(zip(predicted_example_label, label_probabilities)):
+            prob_phishing_spam = prob[1].item()
+            prob_ham = prob[0].item()
+            logging.info(f"The email at path {email_paths[i]} is [ham: {prob_ham:.4f}, phishing: {prob_phishing_spam:.4f}] (expected: {expected_labels_readable[i]})")
+        
+        logging.info(DELIMITER)
+        
+        torch.cuda.empty_cache()
+    except Exception as e:
+        logging.error(f"An error occurred: {e}", exc_info=True)
+    finally:
+        torch.cuda.empty_cache()
+
+if __name__ == "__main__":
+    main()
