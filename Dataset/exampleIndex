@@ -1,2 +1,4 @@
-phishing Dataset/example/Aviso_de_suspensao_da_sua_conta.eml
+spam Dataset/example/Aviso_de_suspensao_da_sua_conta.eml
+ham Dataset/example/Prezado_ptk.eml
+spam Dataset/example/Ed.eml
 ham Dataset/example/Os_verdadeiros.eml

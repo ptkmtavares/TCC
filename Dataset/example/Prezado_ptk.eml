@@ -1,0 +1,140 @@
+Received: from CPWP152MB4269.LAMP152.PROD.OUTLOOK.COM (2603:10d6:103:123::7)
+ by CPUP152MB5084.LAMP152.PROD.OUTLOOK.COM with HTTPS; Fri, 6 Sep 2024
+ 00:13:25 +0000
+Received: from CY5PR13CA0012.namprd13.prod.outlook.com (2603:10b6:930::23) by
+ CPWP152MB4269.LAMP152.PROD.OUTLOOK.COM (2603:10d6:103:123::7) with Microsoft
+ SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.7918.28; Fri, 6 Sep 2024 00:13:22 +0000
+Received: from CY4PEPF0000E9DC.namprd05.prod.outlook.com
+ (2603:10b6:930:0:cafe::96) by CY5PR13CA0012.outlook.office365.com
+ (2603:10b6:930::23) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.7939.16 via Frontend
+ Transport; Fri, 6 Sep 2024 00:13:20 +0000
+Authentication-Results: spf=none (sender IP is 64.31.33.50)
+ smtp.mailfrom=tmpbox.net; dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=tmpbox.net;compauth=none
+ reason=405
+Received-SPF: None (protection.outlook.com: tmpbox.net does not designate
+ permitted sender hosts)
+Received: from moakt.com (64.31.33.50) by
+ CY4PEPF0000E9DC.mail.protection.outlook.com (10.167.241.75) with Microsoft
+ SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id 15.20.7918.13
+ via Frontend Transport; Fri, 6 Sep 2024 00:13:19 +0000
+Received: from tm-php.tm_tm-network ([172.18.0.6] helo=localhost.localdomain)
+	by moakt.com with esmtp (Exim 4.92)
+	(envelope-from <sonicestranho@tmpbox.net>)
+	id 1smMTW-0005BU-JK
+	for patrick.tavares@aluno.cefet-rj.br; Fri, 06 Sep 2024 00:05:18 +0000
+Date: Fri, 6 Sep 2024 00:05:18 +0000
+To: patrick.tavares@aluno.cefet-rj.br
+From: Moakt Temporary Email <sonicestranho@tmpbox.net>
+Subject: Prezado Patrick leia em voz alta
+Message-ID: <dAHrzooBxPQ61MkYtGyUfNqPavtnYLslgaBUqov9CI@localhost.localdomain>
+X-Mailer: PHPMailer 6.6.3 (https://github.com/PHPMailer/PHPMailer)
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Return-Path: sonicestranho@tmpbox.net
+X-MS-Exchange-Organization-ExpirationStartTime: 06 Sep 2024 00:13:19.8452
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id:
+ 99e7b26f-3cf7-496c-344e-08dcce08b69b
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 8eeca404-a47d-4555-a2d4-0f3619041c9c:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic:
+ CY4PEPF0000E9DC:EE_|CPWP152MB4269:EE_|CPUP152MB5084:EE_
+X-MS-Exchange-Organization-AuthSource:
+ CY4PEPF0000E9DC.namprd05.prod.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id: 99e7b26f-3cf7-496c-344e-08dcce08b69b
+X-MS-Exchange-AtpMessageProperties: SA|SL
+X-MS-Exchange-Organization-SCL: 1
+X-Microsoft-Antispam: BCL:0;ARA:13230040;
+X-Forefront-Antispam-Report:
+ CIP:64.31.33.50;CTRY:US;LANG:pt;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:moakt.com;PTR:50-33-31-64.static.reverse.lstn.net;CAT:NONE;SFS:(13230040);DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 06 Sep 2024 00:13:19.0327
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 99e7b26f-3cf7-496c-344e-08dcce08b69b
+X-MS-Exchange-CrossTenant-Id: 8eeca404-a47d-4555-a2d4-0f3619041c9c
+X-MS-Exchange-CrossTenant-AuthSource:
+ CY4PEPF0000E9DC.namprd05.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CPWP152MB4269
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:06.6534409
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.7918.028
+X-Microsoft-Antispam-Mailbox-Delivery:
+	ucf:0;jmr:0;auth:0;dest:I;ENG:(910001)(944506478)(944626604)(920097)(930097)(140003);
+X-Microsoft-Antispam-Message-Info:
+	=?utf-8?B?cklvaFd1MmhXNEY4SXNPOHpNUitlZVp3TThwcXVrZGxqdHd1Q3JSYi90TDFW?=
+ =?utf-8?B?M3hSRWZMMWMwRTlKZVhpdisxRllRc1JMYXh5OSt2Wm1PaTZVM2FXQ1ZrOWY5?=
+ =?utf-8?B?ZGYvcmdzZkJ3Q3JTcC9hR1dLRjJjZnhrajNQeWtHR205UVRXaHRqR2NMWHpV?=
+ =?utf-8?B?SVF1MEEyc0tHeXU4RTB4djA4RndTVzFuL29zaTl0NDN0eGNaeDJ6VkhNcGdF?=
+ =?utf-8?B?SWx5WklxRVZ3VGhsYWZRcWZJb2FkR3ZwUVFCaTExM3BZTVhyUzd1UGwvcWFs?=
+ =?utf-8?B?YXMvSUQxVEpuSTB0RWFhQUtoRStnbk0vYWJxRm1rK1dDZ1c2K3hubnlKYWNV?=
+ =?utf-8?B?NW1YZDFoWXE4ZjYzeGJ0WkJwZlRyUVNNb205Tnppc0dpYWtrMnZxZXU5MlRZ?=
+ =?utf-8?B?dWdueWhrQU44aTFDTk96VGRTUGJGQ0lHYUlza29peHV5bjR1UkRxOFNUbHFW?=
+ =?utf-8?B?R1l0aEg3MytTQUtLNjZkaWxLcFJKUDJpcHZsL3d0bHBkTW9YM3kzUWlwQ3Va?=
+ =?utf-8?B?bkprcmlZeVpaMmhLdmtJdTdocHBiVmZsdHhib3Z3MjhaNW80TDFzK05zOGxG?=
+ =?utf-8?B?czBQUEpucTRuTmxONkN6d0Q3WW1IQ2plRDlyQ0hGbjY3UG9nWXJHREpZTERj?=
+ =?utf-8?B?cjVuTGZLeVVEUlk1YVN3SUpaZ2FZQS9vVThlNUplTStYS0o4aGhBREEzQjl1?=
+ =?utf-8?B?cGxmcjM5MjlyYTd5a2RxWFgzSDFMTVhpL3pPc1lsSzB6TUJ6VFpQdUQySUNh?=
+ =?utf-8?B?YnM0SkRsTVdiVGxCQWdMR2FsK3FZaVVxeVA5Ti9ZckZsZVJCeFVPS05PUkVn?=
+ =?utf-8?B?aEc2SU1uZGx1TUhhTkFsRjJPcVZTOWlXZUMzdlVlc3pueGg1UlNSdVNadU01?=
+ =?utf-8?B?VFR3d2wxcGcwVGVTSlB1M0FMbWhGcFVCckViVldHWFplVzVqd2xXNUljeWo0?=
+ =?utf-8?B?dCtST1p5Sm9WL0ZXSXNhTVA3RTVUTkJOM1U5eHlGL0VBSHlSdzl1KzdPWmQ1?=
+ =?utf-8?B?cjg4RTZhMXovY2ZxbENPY3p2a0F5RS93ZGhhSm9wUGxwWW9wbHhDVkd4RUtn?=
+ =?utf-8?B?UGhDUW04NWNnVys4SDRaemxkaDVrKzJwbWRqVmxCeVhzSFRkdUdoL3BCZ3Bh?=
+ =?utf-8?B?YThSUVZDMXRsSnJubmFTamFkUTdEUkRDQXdzVUFOYmFFMXRMdXpYdGw4WG5Z?=
+ =?utf-8?B?QXBUaUkxZG5tQUZ6b05VRjIrQVc1QmhVY3hRdVpiWkkxSUQ5M1JDeVV2dUIz?=
+ =?utf-8?B?bDNsdllUYkpGb3Bwa1hCTFdhZ2RJS1RVL1psTWVGNkpoVTBjWkkyOUM2RDdi?=
+ =?utf-8?B?cFlsQ0RpNkZEYTVtNkZSb2FOdGVPdU1TMzZrelFrZ2RXTjBGWVRKNUVGeldv?=
+ =?utf-8?B?ZmRjMElPbEJvNCt2bzdXazhMbnYyZTlEWXZQcXFnK1hFSkE1dmxmbW5odWJF?=
+ =?utf-8?B?cjJFeVRlajJtWkhIYnZBMXNIaEJTNHZFdkZ4Q0RIZ1JxNmdReDBaZWVNc0Fl?=
+ =?utf-8?B?RmJuU2hpa3Z4SHF2elFvcWpiTHdkaTIyMjJFa3VFRDQ0Y0tBTEIrL3hUamFK?=
+ =?utf-8?B?WmcwcHJMdHllSEpkUlFzcXpnaEQzY1E4Y29RbU9mQnFJQ0dNcktITHBWSU96?=
+ =?utf-8?B?L1lvTSs2NGdsM1NJcm02c0t3NTh0Zm1FSjZBWGR4K3E1b0lxOGk2RjJhVkFK?=
+ =?utf-8?B?MzdMRHBXa2Zuby9rVUdsMThxK3lJTFRFSDhEZFoxdjVCbXdKd1BkeEhKbmJz?=
+ =?utf-8?B?Y1JZbGxiK1FSR1ZYcXZGc1ZQWWdMWUNZSVJUVnpLVkdXbHRvNTBmMkJQN2NV?=
+ =?utf-8?B?VFlydlV5QjR1dzlGTm1yQk9rb2FRSWoxVW5SdnJ1Ukp1SkVQc1Y0bmRGTnJY?=
+ =?utf-8?B?eEN2VUJDMXZjbkJMTUZLM3V3dFFzMVIzQXhDNEJ1ODNEM1pHUnJPSzJYZmly?=
+ =?utf-8?B?dXV5ZDNSNjJvUHN4aDRad0FCeit5WDMxTktTVVBuZy92cWpKdXVHU21uWW5Z?=
+ =?utf-8?B?RnplT3NLWFZXL0ZONWU0dTNhUWdpSTFjQmhjbURtWTZDNm5PSUdkS0ZKSFQw?=
+ =?utf-8?B?cmczbU9rdUVENlJkLzV4SVM5ZUhaSnZDMndydjVCU1FjZVVHMWRQMjdBWCtO?=
+ =?utf-8?B?anBpa2Y1RkJ2RXBrcTAyeHlNZ2VLbEg5akg1MEhMZVdkY1hpcmh4WWpORHBZ?=
+ =?utf-8?B?RFoxZjN5bWVVemEzY1YzMTF6YXVyQ0xqWktsc1FmbGNhOEZIWUVrZHU4SEg1?=
+ =?utf-8?B?Wk1BYlFwUnB0WGtCb1RYK0x5cnVOQy9iT00vTEk0ZXM3c2pOWDNQd2lTNGlv?=
+ =?utf-8?B?Z3lFL3BFclMxTy9SU3Y3MGwzTDE1YWFkQnlOd0pzS3NINGZ4VGNJWGYxS0xh?=
+ =?utf-8?B?S1ZIdkNVZTA0RjZuaklqWS8vMEdwTjdIQkdFVWlhM2JQSXhBYmVKVEFGR2lX?=
+ =?utf-8?B?MGVHTXJWeDZQOWw4eGpIWWJmRWplSHJNOUkvN1hvSlNJQ0MzV1RUZElLNlk2?=
+ =?utf-8?B?WXRKTXRabHZ6V2U5aEhuOVkrQk1CTHlCRWVDNHhnRVBiTGc1VlBkVHhka3hm?=
+ =?utf-8?B?elM2RjhtSUV0amhhL0dsOU03ZHhyTWsrUGVodjZUR3NSTm9iUDhMaTRzQWxr?=
+ =?utf-8?Q?pkAzLx5w15UY2XoWRONa8sM88bnU=3D?=
+MIME-Version: 1.0
+
+O nacional-zapismo =C3=A9 um movimento nacionalista que defende o uso do Wh=
+atsApp para todas as fun=C3=A7=C3=B5es, assim como a administra=C3=A7=C3=A3=
+o do pa=C3=ADs, o nacional-zapismo defende que cada grupos social e grupo f=
+amiliar deve possuir um grupo de WhatsApp distinto, havendo grupos tanto pa=
+ra amigos, quanto para trabalho, quanto para divers=C3=A3o e quanto para po=
+l=C3=ADtica, o nacional-zapismo defende que a sociedade deve possuir grupos=
+ de WhatsApp onde os pol=C3=ADticos discutem os temas, defendendo tamb=C3=
+=A9m um sistema de democracia participativa-direta no WhatsApp por meio da =
+cria=C3=A7=C3=A3o de um sistema de referendums e plebiscitos e de sugest=C3=
+=B5es autom=C3=A1ticas para o WhatsApp destinado a sugest=C3=B5es em grupos=
+, no nacional-zapismo, as pessoas podem possuir v=C3=A1rios whatsapps, have=
+ndo o uso de do m=C3=ADnimo 4, um para os amigos, um para o trabalho, um pa=
+ra assuntos pol=C3=ADticos e outro para cidadania, o nacional-zapismo tamb=
+=C3=A9m defende que ap=C3=B3s a era dos smarthphones, deve haver a adapta=
+=C3=A7=C3=A3o do WhatsApp para a comunica=C3=A7=C3=A3o via-consci=C3=AAncia=
+, criando um programa capaz de mesmo na comunica=C3=A7=C3=A3o via-consci=C3=
+=AAncia-telep=C3=A1tica o WhatsApp funcione. O nacional-zapismo defende uma=
+ economia cooperativista e distributista, onde todas as negocia=C3=A7=C3=B5=
+es s=C3=A3o feitas pelo WhatsApp, e tamb=C3=A9m o nacional-zapismo tamb=C3=
+=A9m defende a cria=C3=A7=C3=A3o de um sistema an=C3=A1logo ao email, mas d=
+entro do WhatsApp, isso para contatos mais formais e profissionais.
+
