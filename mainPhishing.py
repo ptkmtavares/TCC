@@ -113,7 +113,7 @@ def train_and_evaluate_mlp(train_set: np.ndarray, train_labels: np.ndarray, augm
             f"L1: {best_config['l1_lambda']}\n"
             f"L2: {best_config['l2_lambda']}\n"
             f"Hidden dimension 1: {best_config['hidden_dim1']}\n"
-            f"Hidden dimension 2: {best_config['hidden_dim1']}\n"
+            f"Hidden dimension 2: {best_config['hidden_dim2']}\n"
             f"Learning rate: {best_config['lr']}\n"
             f"Weight decay: {best_config['weight_decay']}\n"
             f"Number of epochs: {best_config['num_epochs']}\n"

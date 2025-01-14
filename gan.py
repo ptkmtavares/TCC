@@ -82,7 +82,7 @@ def train_gan(G: Generator, D: Discriminator, train_loader: torch.utils.data.Dat
     try:
         criterion = nn.BCEWithLogitsLoss()
         optimizer_G = optim.Adam(G.parameters(), lr=0.0002)
-        optimizer_D = optim.Adam(D.parameters(), lr=0.00063)
+        optimizer_D = optim.Adam(D.parameters(), lr=0.00065)
         scaler_G = amp.GradScaler('cuda')
         scaler_D = amp.GradScaler('cuda')
 
