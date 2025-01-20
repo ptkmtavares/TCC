@@ -117,6 +117,7 @@ def train_and_evaluate_mlp(train_set: np.ndarray, train_labels: np.ndarray, augm
             f"Learning rate: {best_config['lr']}\n"
             f"Weight decay: {best_config['weight_decay']}\n"
             f"Number of epochs: {best_config['num_epochs']}\n"
+            f"Dropout: {best_config['dropout']}\n"
             f"Patience: {best_config['patience']}\n"
             f"{DELIMITER}"
         )
