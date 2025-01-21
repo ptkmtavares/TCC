@@ -25,7 +25,7 @@ torch.backends.cudnn.benchmark = True
 torch.cuda.empty_cache()
 
 
-def load_and_preprocess_data() -> (
+def __load_and_preprocess_data() -> (
     Tuple[TensorDataset, TensorDataset, torch.Tensor, torch.Tensor, int]
 ):
     """Loads and preprocesses the data for training and testing.
@@ -67,7 +67,7 @@ def load_and_preprocess_data() -> (
         torch.cuda.empty_cache()
 
 
-def setup_gan(
+def __setup_gan(
     train_set: torch.Tensor, train_labels: torch.Tensor, input_dim: int
 ) -> Generator:
     """Sets up and trains the GAN for phishing data.
@@ -103,7 +103,7 @@ def setup_gan(
     return g_phishing
 
 
-def generate_and_augment_data(
+def __generate_and_augment_data(
     g_phishing: Generator,
     train_set: torch.Tensor,
     train_labels: torch.Tensor,
@@ -148,7 +148,7 @@ def generate_and_augment_data(
     return augmented_train_set, augmented_train_labels
 
 
-def train_and_evaluate_mlp(
+def __train_and_evaluate_mlp(
     train_set: np.ndarray,
     train_labels: np.ndarray,
     augmented_train_set: np.ndarray,
@@ -283,7 +283,7 @@ def main() -> None:
     """Main function to execute the training and evaluation process."""    
     try:
         train_dataset, test_dataset, data_tensor, index_tensor, input_dim = (
-            load_and_preprocess_data()
+            __load_and_preprocess_data()
         )
 
         train_set = data_tensor[train_dataset.indices]
@@ -291,11 +291,11 @@ def main() -> None:
         train_labels = index_tensor[train_dataset.indices]
         test_labels = index_tensor[test_dataset.indices]
 
-        g_phishing = setup_gan(train_set, train_labels, input_dim)
-        augmented_train_set, augmented_train_labels = generate_and_augment_data(
+        g_phishing = __setup_gan(train_set, train_labels, input_dim)
+        augmented_train_set, augmented_train_labels = __generate_and_augment_data(
             g_phishing, train_set, train_labels, input_dim
         )
-        mlp_augmented, accuracy_augmented, accuracy_original = train_and_evaluate_mlp(
+        mlp_augmented, accuracy_augmented, accuracy_original = __train_and_evaluate_mlp(
             train_set.cpu().numpy(),
             train_labels.cpu().numpy(),
             augmented_train_set,

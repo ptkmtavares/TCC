@@ -159,7 +159,7 @@ HEADER_INFORMATION = [
 ]
 
 
-def extract_emails(text: str) -> List[str]:
+def __extract_emails(text: str) -> List[str]:
     """Extracts email addresses from a given text.
 
     Args:
@@ -181,7 +181,7 @@ def extract_emails(text: str) -> List[str]:
     return in_brackets
 
 
-def email_same_check(emails1: List[str], emails2: List[str]) -> int:
+def __email_same_check(emails1: List[str], emails2: List[str]) -> int:
     """Checks if there are any matching email addresses between two lists.
 
     Args:
@@ -200,7 +200,7 @@ def email_same_check(emails1: List[str], emails2: List[str]) -> int:
     return 0
 
 
-def extract_domains(text: str) -> List[str]:
+def __extract_domains(text: str) -> List[str]:
     """Extracts domains from email addresses found in a given text.
 
     Args:
@@ -209,7 +209,7 @@ def extract_domains(text: str) -> List[str]:
     Returns:
         List[str]: A list of extracted domains.
     """
-    emails_list = extract_emails(text)
+    emails_list = __extract_emails(text)
     if not emails_list:
         return []
     domains_list = []
@@ -223,7 +223,7 @@ def extract_domains(text: str) -> List[str]:
     return domains_list
 
 
-def domain_match_check(domains1: List[str], domains2: List[str]) -> int:
+def __domain_match_check(domains1: List[str], domains2: List[str]) -> int:
     """Checks if there are any matching domains between two lists.
 
     Args:
@@ -242,7 +242,7 @@ def domain_match_check(domains1: List[str], domains2: List[str]) -> int:
     return 0
 
 
-def check_shady_domain(domains: List[str]) -> int:
+def __check_shady_domain(domains: List[str]) -> int:
     """Checks if any domain in the list is considered shady.
 
     Args:
@@ -259,7 +259,7 @@ def check_shady_domain(domains: List[str]) -> int:
     return 0
 
 
-def get_str_features(
+def __get_str_features(
     email_info: Dict[str, str],
     info_name: str,
     feature_list: Dict[str, int],
@@ -288,7 +288,7 @@ def get_str_features(
             )
 
 
-def get_time_zone(email_info: Dict[str, str]) -> int:
+def __get_time_zone(email_info: Dict[str, str]) -> int:
     """Determines the time zone from the email date.
 
     Args:
@@ -303,7 +303,7 @@ def get_time_zone(email_info: Dict[str, str]) -> int:
     return 0 if (int(time_zone[9] / (60 * 60)) % 24) == 20 else 1
 
 
-def get_date_date_received_diff(email_info: Dict[str, str]) -> int:
+def __get_date_date_received_diff(email_info: Dict[str, str]) -> int:
     """Calculates the difference between the email date and the received date.
 
     Args:
@@ -329,7 +329,7 @@ def get_date_date_received_diff(email_info: Dict[str, str]) -> int:
     return 0 if date_delta < 0 else 1
 
 
-def get_missing_features(
+def __get_missing_features(
     email_info: Dict[str, str], feature_list: Dict[str, int]
 ) -> None:
     """Checks for missing features in the email information.
@@ -344,7 +344,7 @@ def get_missing_features(
     feature_list["missing_dmarc"] = 0
 
 
-def get_received_str_forged(email_info: Dict[str, str]) -> int:
+def __get_received_str_forged(email_info: Dict[str, str]) -> int:
     """Checks if any received headers contain the word 'forged'.
 
     Args:
@@ -361,7 +361,7 @@ def get_received_str_forged(email_info: Dict[str, str]) -> int:
     return 0
 
 
-def check_if_valid(dict_to_check: Dict[str, str], str_val: str) -> bool:
+def __check_if_valid(dict_to_check: Dict[str, str], str_val: str) -> bool:
     """Checks if a value is valid in a dictionary.
 
     Args:
@@ -381,7 +381,7 @@ def check_if_valid(dict_to_check: Dict[str, str], str_val: str) -> bool:
         return True
 
 
-def get_for_domain_last_received(email_info: Dict[str, str]) -> str:
+def __get_for_domain_last_received(email_info: Dict[str, str]) -> str:
     """Extracts the domain from the last received header.
 
     Args:
@@ -392,7 +392,7 @@ def get_for_domain_last_received(email_info: Dict[str, str]) -> str:
     """
     last_received_val = email_info.get("last_received", "")
     parsed_val = receivedParser.parse(last_received_val)
-    if check_if_valid(parsed_val, "envelope_for"):
+    if __check_if_valid(parsed_val, "envelope_for"):
         main_domain_parts = parsed_val["envelope_for"].split("@")[-1].split(".")
         if len(main_domain_parts) >= 2:
             main_domain = (
@@ -402,7 +402,7 @@ def get_for_domain_last_received(email_info: Dict[str, str]) -> str:
     return "NA"
 
 
-def check_for_received_domain_equal(
+def __check_for_received_domain_equal(
     email_info: Dict[str, str], field_vals: List[str]
 ) -> int:
     """Checks if the domain from the last received header matches any given domains.
@@ -414,13 +414,13 @@ def check_for_received_domain_equal(
     Returns:
         int: 1 if a match is found, 0 otherwise, -1 if no valid domain is found.
     """
-    get_for_domain = get_for_domain_last_received(email_info)
+    get_for_domain = __get_for_domain_last_received(email_info)
     if get_for_domain == "NA" or not field_vals:
         return -1
     return 1 if get_for_domain in field_vals else 0
 
 
-def get_from_domain_first_received(email_info: Dict[str, str]) -> List[str]:
+def __get_from_domain_first_received(email_info: Dict[str, str]) -> List[str]:
     """Extracts domains from the first received header.
 
     Args:
@@ -432,16 +432,16 @@ def get_from_domain_first_received(email_info: Dict[str, str]) -> List[str]:
     first_received_val = email_info["first_received"]
     parsed_val = receivedParser.parse(first_received_val)
     domains_list = []
-    if check_if_valid(parsed_val, "from_hostname"):
+    if __check_if_valid(parsed_val, "from_hostname"):
         if len(parsed_val["from_hostname"].split("@")) == 2:
             domains_list.append(parsed_val["from_hostname"].split("@")[-1])
-    if check_if_valid(parsed_val, "from_name"):
+    if __check_if_valid(parsed_val, "from_name"):
         if len(parsed_val["from_name"].split("@")) == 2:
             domains_list.append(parsed_val["from_name"].split("@")[-1])
     return domains_list
 
 
-def check_received_from_domain_equal(
+def __check_received_from_domain_equal(
     email_info: Dict[str, str], field_vals: List[str]
 ) -> int:
     """Checks if the domains from the first received header match any given domains.
@@ -453,7 +453,7 @@ def check_received_from_domain_equal(
     Returns:
         int: 1 if a match is found, 0 otherwise, -1 if no valid domain is found.
     """
-    domains_list_check = get_from_domain_first_received(email_info)
+    domains_list_check = __get_from_domain_first_received(email_info)
     if not domains_list_check or not field_vals:
         return -1
     for item in field_vals:
@@ -463,7 +463,7 @@ def check_received_from_domain_equal(
     return 0
 
 
-def get_features_array(email_info: Dict[str, str]) -> List[int]:
+def __get_features_array(email_info: Dict[str, str]) -> List[int]:
     """Extracts features from email information and returns them as an array.
 
     Args:
@@ -473,9 +473,9 @@ def get_features_array(email_info: Dict[str, str]) -> List[int]:
         List[int]: An array of extracted features.
     """
     features_dict = {}
-    features_dict["time_zone"] = get_time_zone(email_info)
-    features_dict["date_comp_date_received"] = get_date_date_received_diff(email_info)
-    get_missing_features(email_info, features_dict)
+    features_dict["time_zone"] = __get_time_zone(email_info)
+    features_dict["date_comp_date_received"] = __get_date_date_received_diff(email_info)
+    __get_missing_features(email_info, features_dict)
     if (email_info["arc-authentication-results"] != "") and (
         "spf=none" not in email_info["arc-authentication-results"]
     ):
@@ -493,37 +493,37 @@ def get_features_array(email_info: Dict[str, str]) -> List[int]:
     info_name = "content-transfer-encoding"
     features_names = ["str_content-encoding_empty"]
     conditions_check = [""]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "from"
     features_names = ["str_from_question", "str_from_exclam", "str_from_chevron"]
     conditions_check = ["\\?", "!", "<.+>"]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "to"
     features_names = ["str_to_chevron", "str_to_undisclosed", "str_to_empty"]
     conditions_check = ["<.+>", "Undisclosed Recipients", ""]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "message-id"
     features_names = ["str_message-ID_dollar"]
     conditions_check = ["\\$"]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "return-path"
     features_names = ["str_return-path_bounce", "str_return-path_empty"]
     conditions_check = ["bounce", ""]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "reply-to"
     features_names = ["str_reply-to_question"]
     conditions_check = ["\\?"]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "received-spf"
@@ -533,19 +533,19 @@ def get_features_array(email_info: Dict[str, str]) -> List[int]:
         "str_received-SPF_fail",
     ]
     conditions_check = ["bad", "softfail", "fail"]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "content-type"
     features_names = ["str_content-type_texthtml"]
     conditions_check = ["text/html"]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "precedence"
     features_names = ["str_precedence_list"]
     conditions_check = ["list"]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "arc-authentication-results"
@@ -555,109 +555,109 @@ def get_features_array(email_info: Dict[str, str]) -> List[int]:
         "str_received-SPF_fail",
     ]
     conditions_check = ["spf=bad", "spf=softfail", "spf=fail"]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "arc-authentication-results"
     features_names = ["str_dmarc_bad", "str_dmarc_softfail", "str_dmarc_fail"]
     conditions_check = ["dmarc=bad", "dmarc=softfail", "dmarc=fail"]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
     info_name = "arc-authentication-results"
     features_names = ["str_dkim_bad", "str_dkim_softfail", "str_dkim_fail"]
     conditions_check = ["dkim=bad", "dkim=softfail", "dkim=fail"]
-    get_str_features(
+    __get_str_features(
         email_info, info_name, features_dict, features_names, conditions_check
     )
-    features_dict["received_str_forged"] = get_received_str_forged(email_info)
-    from_emails = extract_emails(email_info["from"])
-    reply_to_emails = extract_emails(email_info["reply-to"])
-    features_dict["email_match_from_reply-to"] = email_same_check(
+    features_dict["received_str_forged"] = __get_received_str_forged(email_info)
+    from_emails = __extract_emails(email_info["from"])
+    reply_to_emails = __extract_emails(email_info["reply-to"])
+    features_dict["email_match_from_reply-to"] = __email_same_check(
         from_emails, reply_to_emails
     )
-    message_id_domains = extract_domains(email_info["message-id"])
-    from_domains = extract_domains(email_info["from"])
-    return_path_domains = extract_domains(email_info["return-path"])
-    sender_domains = extract_domains(email_info["sender"])
-    reply_to_domains = extract_domains(email_info["reply-to"])
-    to_domains = extract_domains(email_info["to"])
-    in_reply_to_domains = extract_domains(email_info["in-reply-to"])
-    errors_to_domains = extract_domains(email_info["errors-to"])
-    references_domains = extract_domains(email_info["references"])
-    features_dict["domain_val_message-id"] = check_shady_domain(message_id_domains)
-    features_dict["domain_match_message-id_from"] = domain_match_check(
+    message_id_domains = __extract_domains(email_info["message-id"])
+    from_domains = __extract_domains(email_info["from"])
+    return_path_domains = __extract_domains(email_info["return-path"])
+    sender_domains = __extract_domains(email_info["sender"])
+    reply_to_domains = __extract_domains(email_info["reply-to"])
+    to_domains = __extract_domains(email_info["to"])
+    in_reply_to_domains = __extract_domains(email_info["in-reply-to"])
+    errors_to_domains = __extract_domains(email_info["errors-to"])
+    references_domains = __extract_domains(email_info["references"])
+    features_dict["domain_val_message-id"] = __check_shady_domain(message_id_domains)
+    features_dict["domain_match_message-id_from"] = __domain_match_check(
         message_id_domains, from_domains
     )
-    features_dict["domain_match_from_return-path"] = domain_match_check(
+    features_dict["domain_match_from_return-path"] = __domain_match_check(
         from_domains, return_path_domains
     )
-    features_dict["domain_match_message-id_return-path"] = domain_match_check(
+    features_dict["domain_match_message-id_return-path"] = __domain_match_check(
         message_id_domains, return_path_domains
     )
-    features_dict["domain_match_message-id_sender"] = domain_match_check(
+    features_dict["domain_match_message-id_sender"] = __domain_match_check(
         message_id_domains, sender_domains
     )
-    features_dict["domain_match_message-id_reply-to"] = domain_match_check(
+    features_dict["domain_match_message-id_reply-to"] = __domain_match_check(
         message_id_domains, reply_to_domains
     )
-    features_dict["domain_match_return-path_reply-to"] = domain_match_check(
+    features_dict["domain_match_return-path_reply-to"] = __domain_match_check(
         return_path_domains, reply_to_domains
     )
-    features_dict["domain_match_reply-to_to"] = domain_match_check(
+    features_dict["domain_match_reply-to_to"] = __domain_match_check(
         reply_to_domains, to_domains
     )
-    features_dict["domain_match_to_in-reply-to"] = domain_match_check(
+    features_dict["domain_match_to_in-reply-to"] = __domain_match_check(
         to_domains, in_reply_to_domains
     )
-    features_dict["domain_match_errors-to_message-id"] = domain_match_check(
+    features_dict["domain_match_errors-to_message-id"] = __domain_match_check(
         errors_to_domains, message_id_domains
     )
-    features_dict["domain_match_errors-to_from"] = domain_match_check(
+    features_dict["domain_match_errors-to_from"] = __domain_match_check(
         errors_to_domains, from_domains
     )
-    features_dict["domain_match_errors-to_sender"] = domain_match_check(
+    features_dict["domain_match_errors-to_sender"] = __domain_match_check(
         errors_to_domains, sender_domains
     )
-    features_dict["domain_match_errors-to_reply-to"] = domain_match_check(
+    features_dict["domain_match_errors-to_reply-to"] = __domain_match_check(
         errors_to_domains, reply_to_domains
     )
-    features_dict["domain_match_sender_from"] = domain_match_check(
+    features_dict["domain_match_sender_from"] = __domain_match_check(
         sender_domains, from_domains
     )
-    features_dict["domain_match_references_reply-to"] = domain_match_check(
+    features_dict["domain_match_references_reply-to"] = __domain_match_check(
         references_domains, reply_to_domains
     )
-    features_dict["domain_match_references_in-reply-to"] = domain_match_check(
+    features_dict["domain_match_references_in-reply-to"] = __domain_match_check(
         references_domains, in_reply_to_domains
     )
-    features_dict["domain_match_references_to"] = domain_match_check(
+    features_dict["domain_match_references_to"] = __domain_match_check(
         references_domains, to_domains
     )
-    features_dict["domain_match_from_reply-to"] = domain_match_check(
+    features_dict["domain_match_from_reply-to"] = __domain_match_check(
         from_domains, reply_to_domains
     )
-    features_dict["domain_match_to_from"] = domain_match_check(to_domains, from_domains)
-    features_dict["domain_match_to_message-id"] = domain_match_check(
+    features_dict["domain_match_to_from"] = __domain_match_check(to_domains, from_domains)
+    features_dict["domain_match_to_message-id"] = __domain_match_check(
         to_domains, message_id_domains
     )
-    features_dict["domain_match_to_received"] = check_for_received_domain_equal(
+    features_dict["domain_match_to_received"] = __check_for_received_domain_equal(
         email_info, to_domains
     )
-    features_dict["domain_match_reply-to_received"] = check_for_received_domain_equal(
+    features_dict["domain_match_reply-to_received"] = __check_for_received_domain_equal(
         email_info, reply_to_emails
     )
-    features_dict["domain_match_from_received"] = check_received_from_domain_equal(
+    features_dict["domain_match_from_received"] = __check_received_from_domain_equal(
         email_info, from_domains
     )
     features_dict["domain_match_return-path_received"] = (
-        check_received_from_domain_equal(email_info, return_path_domains)
+        __check_received_from_domain_equal(email_info, return_path_domains)
     )
     features_array = [features_dict[feature] for feature in features_dict.keys()]
     return features_array
 
 
-def get_email_info(email_path: str) -> Union[Dict[str, str], int]:
+def __get_email_info(email_path: str) -> Union[Dict[str, str], int]:
     """Reads and parses email information from a file.
 
     Args:
@@ -690,7 +690,7 @@ def get_email_info(email_path: str) -> Union[Dict[str, str], int]:
     return email_dict
 
 
-def process_email(
+def __process_email(
     line: str, email_cache: Dict[str, List[int]], label_dict: Dict[str, int]
 ) -> Tuple[Union[List[int], None], Union[int, None], Union[str, None]]:
     """Processes a single email line to extract features and label.
@@ -705,10 +705,10 @@ def process_email(
     """
     label, email_path = line.split(" ")
     if email_path not in email_cache:
-        email_info = get_email_info(email_path)
+        email_info = __get_email_info(email_path)
         if email_info == -1:
             return None, None, None
-        email_cache[email_path] = get_features_array(email_info)
+        email_cache[email_path] = __get_features_array(email_info)
     return email_cache[email_path], label_dict[label], email_path
 
 
@@ -739,7 +739,7 @@ def get_training_test_set(
     email_cache = {}
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [
-            executor.submit(process_email, line, email_cache, label_dict)
+            executor.submit(__process_email, line, email_cache, label_dict)
             for line in selected_lines
         ]
         for future in concurrent.futures.as_completed(futures):
@@ -769,7 +769,7 @@ def get_example_test_set(
     email_cache = {}
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [
-            executor.submit(process_email, line, email_cache, label_dict)
+            executor.submit(__process_email, line, email_cache, label_dict)
             for line in lines
         ]
         for future in concurrent.futures.as_completed(futures):

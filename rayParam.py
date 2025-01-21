@@ -18,7 +18,7 @@ torch.backends.cudnn.benchmark = True
 torch.cuda.empty_cache()
 
 
-def train_mlp_tune(
+def __train_mlp_tune(
     config: Dict[str, Any],
     train_data: torch.Tensor,
     train_labels: torch.Tensor,
@@ -90,7 +90,7 @@ def train_mlp_tune(
         torch.cuda.empty_cache()
 
 
-def trial_dirname_creator(trial: Trial) -> str:
+def __trial_dirname_creator(trial: Trial) -> str:
     """Create a directory name for the trial.
 
     Args:
@@ -158,7 +158,7 @@ def get_hyperparameters(
     try:
         analysis = tune.run(
             tune.with_parameters(
-                train_mlp_tune,
+                __train_mlp_tune,
                 train_data=train_set,
                 train_labels=train_labels,
                 test_data=test_set,
@@ -170,7 +170,7 @@ def get_hyperparameters(
             config=config,
             num_samples=30,
             scheduler=scheduler,
-            trial_dirname_creator=trial_dirname_creator,
+            trial_dirname_creator=__trial_dirname_creator,
             verbose=1,
         )
     except Exception as e:

@@ -80,7 +80,7 @@ class Discriminator(nn.Module):
         return self.model(x)
 
 
-def save_checkpoint(
+def __save_checkpoint(
     G: Generator,
     D: Discriminator,
     optimizer_G: torch.optim.Optimizer,
@@ -113,7 +113,7 @@ def save_checkpoint(
     )
 
 
-def load_checkpoint(
+def __load_checkpoint(
     G: Generator,
     D: Discriminator,
     optimizer_G: torch.optim.Optimizer,
@@ -141,7 +141,7 @@ def load_checkpoint(
     return checkpoint["epoch"]
 
 
-def get_latest_checkpoint(
+def __get_latest_checkpoint(
     checkpoint_dir: str = "checkpoints", num_epochs: int = 1000
 ) -> str:
     """
@@ -205,10 +205,10 @@ def train_gan(
         scaler_D = amp.GradScaler("cuda")
 
         start_epoch = 0
-        latest_checkpoint = get_latest_checkpoint(checkpoint_dir, num_epochs)
+        latest_checkpoint = __get_latest_checkpoint(checkpoint_dir, num_epochs)
         if latest_checkpoint:
             logging.info(f"Loading latest checkpoint: {latest_checkpoint}")
-            start_epoch = load_checkpoint(
+            start_epoch = __load_checkpoint(
                 G, D, optimizer_G, optimizer_D, latest_checkpoint
             )
             if start_epoch >= num_epochs:
@@ -270,7 +270,7 @@ def train_gan(
                     f"Estimated remaining time: {remaining_time:.2f} seconds\n"
                     f"{DELIMETER}"
                 )
-                save_checkpoint(
+                __save_checkpoint(
                     G, D, optimizer_G, optimizer_D, epoch + 1, checkpoint_dir
                 )
 

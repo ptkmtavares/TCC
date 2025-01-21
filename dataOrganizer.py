@@ -9,7 +9,7 @@ logging.basicConfig(
 )
 
 
-def setup_directories(data_path: str, index_path: str) -> None:
+def __setup_directories(data_path: str, index_path: str) -> None:
     """Sets up the necessary directories for data and index files.
 
     Args:
@@ -20,7 +20,7 @@ def setup_directories(data_path: str, index_path: str) -> None:
     os.makedirs(os.path.dirname(index_path), exist_ok=True)
 
 
-def process_email_file(file_path: str, encoding: str = "latin_1") -> str:
+def __process_email_file(file_path: str, encoding: str = "latin_1") -> str:
     """Reads the content of an email file.
 
     Args:
@@ -38,7 +38,7 @@ def process_email_file(file_path: str, encoding: str = "latin_1") -> str:
         return ""
 
 
-def get_phishing_email_list(folder_path: str) -> List[str]:
+def __get_phishing_email_list(folder_path: str) -> List[str]:
     """Gets a list of phishing emails from a folder.
 
     Args:
@@ -49,12 +49,20 @@ def get_phishing_email_list(folder_path: str) -> List[str]:
     """
     email_list = []
 
-    def process_file(filename: str) -> List[str]:
+    def __process_file(filename: str) -> List[str]:
+        """Processes a single file and returns a list of email contents.
+
+        Args:
+            filename (str): The name of the file to process.
+
+        Returns:
+            List[str]: A list of email contents.
+        """        
         if not filename.endswith(".txt"):
             return []
 
         file_path = os.path.join(folder_path, filename)
-        content = process_email_file(file_path)
+        content = __process_email_file(file_path)
         if not content:
             return []
 
@@ -66,7 +74,7 @@ def get_phishing_email_list(folder_path: str) -> List[str]:
 
     with ThreadPoolExecutor() as executor:
         futures = [
-            executor.submit(process_file, filename)
+            executor.submit(__process_file, filename)
             for filename in os.listdir(folder_path)
         ]
         for future in futures:
@@ -75,7 +83,7 @@ def get_phishing_email_list(folder_path: str) -> List[str]:
     return email_list
 
 
-def copy_spam_ham_files(source_path: str, dest_path: str) -> None:
+def __copy_spam_ham_files(source_path: str, dest_path: str) -> None:
     """Copies spam and ham email files from the source to the destination.
 
     Args:
@@ -93,7 +101,7 @@ def copy_spam_ham_files(source_path: str, dest_path: str) -> None:
         list(executor.map(copy_file, os.listdir(source_path)))
 
 
-def update_index_file(
+def __update_index_file(
     index_path: str, data_folder_path: str, spam_ham_index_path: str
 ) -> None:
     """Updates the index file with the new data folder path.
@@ -114,7 +122,7 @@ def update_index_file(
         index.write(index_text)
 
 
-def write_phishing_emails(
+def __write_phishing_emails(
     emails: List[str], data_path: str, index_path: str, start_index: int
 ) -> None:
     """Writes phishing emails to the data directory and updates the index file.
@@ -127,7 +135,7 @@ def write_phishing_emails(
     """
     logging.info(f"Processing {len(emails)} phishing emails")
 
-    def write_email(args: Tuple[int, str]) -> str:
+    def __write_email(args: Tuple[int, str]) -> str:
         """Writes a single phishing email to a file.
 
         Args:
@@ -146,7 +154,7 @@ def write_phishing_emails(
         return f"phishing {filepath}\n"
 
     with ThreadPoolExecutor() as executor:
-        index_entries = list(executor.map(write_email, enumerate(emails)))
+        index_entries = list(executor.map(__write_email, enumerate(emails)))
 
     with open(index_path, "a", encoding="latin_1") as index:
         index.writelines(index_entries)
@@ -160,13 +168,13 @@ def main():
     spam_ham_index_path = "Dataset/SpamHam/trec07p/full/index"
     phishing_folder_path = "Dataset/Phishing/TXTs"
 
-    setup_directories(data_folder_path, index_path)
+    __setup_directories(data_folder_path, index_path)
 
-    copy_spam_ham_files(spam_ham_data_path, data_folder_path)
-    update_index_file(index_path, data_folder_path, spam_ham_index_path)
+    __copy_spam_ham_files(spam_ham_data_path, data_folder_path)
+    __update_index_file(index_path, data_folder_path, spam_ham_index_path)
 
-    phishing_emails = get_phishing_email_list(phishing_folder_path)
-    write_phishing_emails(
+    phishing_emails = __get_phishing_email_list(phishing_folder_path)
+    __write_phishing_emails(
         phishing_emails, data_folder_path, index_path, start_index=75420
     )
 
