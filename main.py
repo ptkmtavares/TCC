@@ -183,6 +183,7 @@ def train_and_evaluate_mlp(
             example_labels=example_index,
             config="phishing",
         )
+        print(DELIMITER)
         logging.info(
             f"\nBest hyperparameters found:\n"
             f"L1: {best_config['l1_lambda']}\n"
@@ -331,7 +332,7 @@ def main() -> None:
                 f"The email at path {email_paths[i]} is [ham: {prob_ham:.4f}, phishing: {prob_phishing_spam:.4f}] (expected: {expected_labels_readable[i]})"
             )
 
-        logging.info(DELIMITER)
+        print(DELIMITER)
 
         torch.cuda.empty_cache()
     except Exception as e:
