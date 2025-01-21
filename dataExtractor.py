@@ -637,7 +637,9 @@ def __get_features_array(email_info: Dict[str, str]) -> List[int]:
     features_dict["domain_match_from_reply-to"] = __domain_match_check(
         from_domains, reply_to_domains
     )
-    features_dict["domain_match_to_from"] = __domain_match_check(to_domains, from_domains)
+    features_dict["domain_match_to_from"] = __domain_match_check(
+        to_domains, from_domains
+    )
     features_dict["domain_match_to_message-id"] = __domain_match_check(
         to_domains, message_id_domains
     )

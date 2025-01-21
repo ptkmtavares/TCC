@@ -57,7 +57,7 @@ def __get_phishing_email_list(folder_path: str) -> List[str]:
 
         Returns:
             List[str]: A list of email contents.
-        """        
+        """
         if not filename.endswith(".txt"):
             return []
 
