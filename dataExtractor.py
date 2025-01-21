@@ -5,10 +5,12 @@ import email.utils as emailUtils
 import random
 import concurrent.futures
 from typing import List, Tuple, Dict, Union
+from receivedParser import ReceivedParser
 
 LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 parser = HeaderParser()
+receivedParser = ReceivedParser()
 
 FEATURES = [
     'time_zone',
@@ -72,7 +74,11 @@ FEATURES = [
     'domain_match_references_to',
     'domain_match_from_reply-to',
     'domain_match_to_from',
-    'domain_match_to_message-id'
+    'domain_match_to_message-id',
+    'domain_match_to_received',
+    'domain_match_reply-to_received',
+    'domain_match_from_received',
+    'domain_match_return-path_received'
 ]
 
 HEADER_INFORMATION = [
@@ -241,6 +247,54 @@ def get_received_str_forged(email_info: Dict[str, str]) -> int:
             return 1
     return 0
 
+def check_if_valid(dict_to_check: Dict[str, str], str_val: str) -> bool:
+    if dict_to_check is None:
+        return False
+    elif str_val not in dict_to_check:
+        return False
+    elif dict_to_check[str_val] is None:
+        return False
+    else:
+        return True
+
+def get_for_domain_last_received(email_info: Dict[str, str]) -> str:
+    last_received_val = email_info.get('last_received', '')
+    parsed_val = receivedParser.parse(last_received_val)
+    if check_if_valid(parsed_val, 'envelope_for'):
+        main_domain_parts = parsed_val['envelope_for'].split('@')[-1].split('.')
+        if len(main_domain_parts) >= 2:
+            main_domain = main_domain_parts[-2] + '.' + re.sub(r'\W+', '', main_domain_parts[-1])
+            return main_domain.lower()
+    return 'NA'
+
+def check_for_received_domain_equal(email_info: Dict[str, str], field_vals: List[str]) -> int:
+    get_for_domain = get_for_domain_last_received(email_info)
+    if get_for_domain == 'NA' or not field_vals:
+        return -1
+    return 1 if get_for_domain in field_vals else 0
+
+def get_from_domain_first_received(email_info: Dict[str, str]) -> List[str]:
+    first_received_val = email_info['first_received']
+    parsed_val = receivedParser.parse(first_received_val)
+    domains_list = []
+    if check_if_valid(parsed_val, 'from_hostname'):
+        if len(parsed_val['from_hostname'].split('@')) == 2:
+            domains_list.append(parsed_val['from_hostname'].split('@')[-1])
+    if check_if_valid(parsed_val, 'from_name'):
+        if len(parsed_val['from_name'].split('@')) == 2:
+            domains_list.append(parsed_val['from_name'].split('@')[-1])
+    return domains_list
+
+def check_received_from_domain_equal(email_info: Dict[str, str], field_vals: List[str]) -> int:
+    domains_list_check = get_from_domain_first_received(email_info)
+    if not domains_list_check or not field_vals:
+        return -1
+    for item in field_vals:
+        for item2 in domains_list_check:
+            if item == item2:
+                return 1
+    return 0
+
 def get_features_array(email_info: Dict[str, str]) -> List[int]:
     features_dict = {}
     features_dict['time_zone'] = get_time_zone(email_info)
@@ -335,6 +389,10 @@ def get_features_array(email_info: Dict[str, str]) -> List[int]:
     features_dict['domain_match_from_reply-to'] = domain_match_check(from_domains, reply_to_domains)
     features_dict['domain_match_to_from'] = domain_match_check(to_domains, from_domains)
     features_dict['domain_match_to_message-id'] = domain_match_check(to_domains, message_id_domains)
+    features_dict['domain_match_to_received'] = check_for_received_domain_equal(email_info, to_domains)
+    features_dict['domain_match_reply-to_received'] = check_for_received_domain_equal(email_info, reply_to_emails)
+    features_dict['domain_match_from_received'] = check_received_from_domain_equal(email_info, from_domains)
+    features_dict['domain_match_return-path_received'] = check_received_from_domain_equal(email_info, return_path_domains)
     features_array = [features_dict[feature] for feature in features_dict.keys()]
     return features_array
 
@@ -352,6 +410,9 @@ def get_email_info(email_path: str) -> Union[Dict[str, str], int]:
     hops = len(received_list) if received_list else 0
     for i, received_field in enumerate(received_list or []):
         email_dict[f'received_hop_{i + 1}'] = received_field
+    if received_list:
+        email_dict['first_received'] = received_list[0]
+        email_dict['last_received'] = received_list[-1]
     temp_dict = dict(zip(features_lower_case, header.values()))
     for key in temp_dict.keys():
         if key in HEADER_INFORMATION:
