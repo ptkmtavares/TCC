@@ -2,6 +2,15 @@ import re
 
 
 class ReceivedParser(object):
+    """Parser for email 'Received' headers.
+
+    Args:
+        object: Base class for the parser.
+
+    Returns:
+        ReceivedParser: A parser instance for email 'Received' headers.
+    """
+
     regexes = [
         (
             "from\s+(mail\s+pickup\s+service|(?P<from_name>[\[\]\w\.\-]*))\s*(\(\s*\[?(?P<from_ip>[a-f\d\.\:]+)(\%\d+|)\]?\s*\)|)\s*by\s*(?P<by_hostname>[\w\.\-]+)\s*(\(\s*\[?(?P<by_ip>[\d\.\:a-f]+)(\%\d+|)\]?\)|)\s*(over\s+TLS\s+secured\s+channel|)\s*with\s*(mapi|Microsoft\s+SMTP\s+Server|Microsoft\s+SMTPSVC(\((?P<server_version>[\d\.]+)\)|))\s*(\((TLS|version=(?P<tls>[\w\.]+)|)\,?\s*(cipher=(?P<cipher>[\w\_]+)|)\)|)\s*(id\s+(?P<id>[\d\.]+)|)",
@@ -112,7 +121,15 @@ class ReceivedParser(object):
     ]
 
     @staticmethod
-    def parse(header: str):
+    def parse(header: str) -> dict:
+        """Parse an email 'Received' header string into its components.
+
+        Args:
+            header (str): The 'Received' header string to parse.
+
+        Returns:
+            dict: Dictionary containing parsed components or None if parsing fails.
+        """
         parts = header.split(";")
         if len(parts) != 2:
             return None

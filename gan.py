@@ -16,7 +16,15 @@ torch.cuda.empty_cache()
 
 
 class Generator(nn.Module):
-    def __init__(self, input_dim: int, output_dim: int):
+    """Generator model for GAN"""
+
+    def __init__(self, input_dim: int, output_dim: int) -> None:
+        """Initialize the generator model.
+
+        Args:
+            input_dim (int): Dimension of the input noise vector.
+            output_dim (int): Dimension of the output data.
+        """
         super(Generator, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(input_dim, 256),
@@ -29,11 +37,26 @@ class Generator(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the generator model.
+
+        Args:
+            x (torch.Tensor): Input noise vector.
+
+        Returns:
+            torch.Tensor: Generated samples.
+        """
         return self.model(x)
 
 
 class Discriminator(nn.Module):
-    def __init__(self, input_dim: int):
+    """Discriminator model for GAN"""
+
+    def __init__(self, input_dim: int) -> None:
+        """Initialize the discriminator model.
+
+        Args:
+            input_dim (int): Dimension of the input data.
+        """
         super(Discriminator, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(input_dim, 256),
@@ -46,6 +69,14 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the discriminator model.
+
+        Args:
+            x (torch.Tensor): Input data.
+
+        Returns:
+            torch.Tensor: Output logits.
+        """
         return self.model(x)
 
 
@@ -57,6 +88,17 @@ def save_checkpoint(
     epoch: int,
     checkpoint_dir: str = "checkpoints",
 ) -> None:
+    """
+    Save the model checkpoint.
+
+    Args:
+        G (Generator): Generator model.
+        D (Discriminator): Discriminator model.
+        optimizer_G (torch.optim.Optimizer): Optimizer for the generator.
+        optimizer_D (torch.optim.Optimizer): Optimizer for the discriminator.
+        epoch (int): Current epoch number.
+        checkpoint_dir (str, optional): Directory to save the checkpoint. Defaults to "checkpoints".
+    """
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
     torch.save(
@@ -78,6 +120,19 @@ def load_checkpoint(
     optimizer_D: torch.optim.Optimizer,
     checkpoint_path: str,
 ) -> int:
+    """
+    Load the model checkpoint.
+
+    Args:
+        G (Generator): Generator model.
+        D (Discriminator): Discriminator model.
+        optimizer_G (torch.optim.Optimizer): Optimizer for the generator.
+        optimizer_D (torch.optim.Optimizer): Optimizer for the discriminator.
+        checkpoint_path (str): Path to the checkpoint file.
+
+    Returns:
+        int: Epoch number from the loaded checkpoint.
+    """
     checkpoint = torch.load(checkpoint_path, weights_only=True)
     G.load_state_dict(checkpoint["G_state_dict"])
     D.load_state_dict(checkpoint["D_state_dict"])
@@ -89,6 +144,16 @@ def load_checkpoint(
 def get_latest_checkpoint(
     checkpoint_dir: str = "checkpoints", num_epochs: int = 1000
 ) -> str:
+    """
+    Get the latest checkpoint file.
+
+    Args:
+        checkpoint_dir (str, optional): Directory containing checkpoints. Defaults to "checkpoints".
+        num_epochs (int, optional): Total number of epochs. Defaults to 1000.
+
+    Returns:
+        str: Path to the latest checkpoint file.
+    """
     checkpoints = [
         f for f in os.listdir(checkpoint_dir) if f.startswith("checkpoint_epoch_")
     ]
@@ -119,6 +184,19 @@ def train_gan(
     device: str = "cpu",
     checkpoint_dir: str = "checkpoints",
 ) -> None:
+    """
+    Train the GAN model.
+
+    Args:
+        G (Generator): Generator model.
+        D (Discriminator): Discriminator model.
+        train_loader (torch.utils.data.DataLoader): DataLoader for training data.
+        input_dim (int): Dimension of the input noise vector.
+        num_epochs (int, optional): Number of epochs to train. Defaults to 1000.
+        n_critic (int, optional): Number of critic iterations per generator iteration. Defaults to 1.
+        device (str, optional): Device to train on. Defaults to "cpu".
+        checkpoint_dir (str, optional): Directory to save checkpoints. Defaults to "checkpoints".
+    """
     try:
         criterion = nn.BCEWithLogitsLoss()
         optimizer_G = optim.Adam(G.parameters(), lr=0.0002)
@@ -203,6 +281,18 @@ def train_gan(
 def generate_adversarial_examples(
     G: Generator, num_samples: int, input_dim: int, device: str = "cpu"
 ) -> np.ndarray:
+    """
+    Generate adversarial examples using the trained generator.
+
+    Args:
+        G (Generator): Trained generator model.
+        num_samples (int): Number of samples to generate.
+        input_dim (int): Dimension of the input noise vector.
+        device (str, optional): Device to generate on. Defaults to "cpu".
+
+    Returns:
+        np.ndarray: Generated samples.
+    """
     try:
         G.eval()
         with torch.no_grad(), amp.autocast("cuda"):

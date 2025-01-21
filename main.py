@@ -28,6 +28,12 @@ torch.cuda.empty_cache()
 def load_and_preprocess_data() -> (
     Tuple[TensorDataset, TensorDataset, torch.Tensor, torch.Tensor, int]
 ):
+    """Loads and preprocesses the data for training and testing.
+
+    Returns:
+        Tuple[TensorDataset, TensorDataset, torch.Tensor, torch.Tensor, int]: 
+        The training dataset, test dataset, data tensor, index tensor, and input dimension.
+    """    
     try:
         logging.info(
             f"\n{DELIMITER}\n" f"Loading and preprocessing data...\n" f"{DELIMITER}"
@@ -64,6 +70,16 @@ def load_and_preprocess_data() -> (
 def setup_gan(
     train_set: torch.Tensor, train_labels: torch.Tensor, input_dim: int
 ) -> Generator:
+    """Sets up and trains the GAN for phishing data.
+
+    Args:
+        train_set (torch.Tensor): The training set.
+        train_labels (torch.Tensor): The training labels.
+        input_dim (int): The input dimension.
+
+    Returns:
+        Generator: The trained generator model.
+    """    
     logging.info(f"\nTraining GAN for phishing...\n" f"{DELIMITER}")
     phishing_data = train_set[train_labels.cpu().numpy() == 1]
     phishing_labels = train_labels[train_labels.cpu().numpy() == 1]
@@ -93,6 +109,17 @@ def generate_and_augment_data(
     train_labels: torch.Tensor,
     input_dim: int,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """Generates adversarial examples and augments the training data.
+
+    Args:
+        g_phishing (Generator): The trained generator model.
+        train_set (torch.Tensor): The training set.
+        train_labels (torch.Tensor): The training labels.
+        input_dim (int): The input dimension.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: The augmented training set and labels.
+    """    
     logging.info(f"\nGenerating adversarial examples...\n" f"{DELIMITER}")
     ham_data = train_set[train_labels.cpu().numpy() == 0]
     phishing_data = train_set[train_labels.cpu().numpy() == 1]
@@ -129,6 +156,19 @@ def train_and_evaluate_mlp(
     test_set: np.ndarray,
     test_labels: np.ndarray,
 ) -> Tuple[MLP, float, float]:
+    """Trains and evaluates the MLP model with and without augmented data.
+
+    Args:
+        train_set (np.ndarray): The original training set.
+        train_labels (np.ndarray): The original training labels.
+        augmented_train_set (np.ndarray): The augmented training set.
+        augmented_train_labels (np.ndarray): The augmented training labels.
+        test_set (np.ndarray): The test set.
+        test_labels (np.ndarray): The test labels.
+
+    Returns:
+        Tuple[MLP, float, float]: The trained MLP model, accuracy with augmented data, and accuracy without augmented data.
+    """    
     try:
         logging.info(
             f"\nTraining and evaluating the MLP with augmented data...\n" f"{DELIMITER}"
@@ -238,7 +278,8 @@ def train_and_evaluate_mlp(
         torch.cuda.empty_cache()
 
 
-def main():
+def main() -> None:
+    """Main function to execute the training and evaluation process."""    
     try:
         train_dataset, test_dataset, data_tensor, index_tensor, input_dim = (
             load_and_preprocess_data()

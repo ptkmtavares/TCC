@@ -158,6 +158,14 @@ HEADER_INFORMATION = [
 
 
 def extract_emails(text: str) -> List[str]:
+    """Extracts email addresses from a given text.
+
+    Args:
+        text (str): The text to extract email addresses from.
+
+    Returns:
+        List[str]: A list of extracted email addresses.
+    """
     if not text:
         return []
     in_brackets = re.findall(
@@ -172,6 +180,15 @@ def extract_emails(text: str) -> List[str]:
 
 
 def email_same_check(emails1: List[str], emails2: List[str]) -> int:
+    """Checks if there are any matching email addresses between two lists.
+
+    Args:
+        emails1 (List[str]): The first list of email addresses.
+        emails2 (List[str]): The second list of email addresses.
+
+    Returns:
+        int: 1 if there is a match, 0 if no match, -1 if either list is empty.
+    """
     if not emails1 or not emails2:
         return -1
     for email1 in emails1:
@@ -182,6 +199,14 @@ def email_same_check(emails1: List[str], emails2: List[str]) -> int:
 
 
 def extract_domains(text: str) -> List[str]:
+    """Extracts domains from email addresses found in a given text.
+
+    Args:
+        text (str): The text to extract domains from.
+
+    Returns:
+        List[str]: A list of extracted domains.
+    """
     emails_list = extract_emails(text)
     if not emails_list:
         return []
@@ -197,6 +222,15 @@ def extract_domains(text: str) -> List[str]:
 
 
 def domain_match_check(domains1: List[str], domains2: List[str]) -> int:
+    """Checks if there are any matching domains between two lists.
+
+    Args:
+        domains1 (List[str]): The first list of domains.
+        domains2 (List[str]): The second list of domains.
+
+    Returns:
+        int: 1 if there is a match, 0 if no match, -1 if either list is empty.
+    """
     if not domains1 or not domains2:
         return -1
     for d1 in domains1:
@@ -207,6 +241,14 @@ def domain_match_check(domains1: List[str], domains2: List[str]) -> int:
 
 
 def check_shady_domain(domains: List[str]) -> int:
+    """Checks if any domain in the list is considered shady.
+
+    Args:
+        domains (List[str]): The list of domains to check.
+
+    Returns:
+        int: 1 if a shady domain is found, 0 otherwise, -1 if the list is empty.
+    """
     if not domains:
         return -1
     for domain in domains:
@@ -222,6 +264,15 @@ def get_str_features(
     features: List[str],
     conditions_check: List[str],
 ) -> None:
+    """Extracts string-based features from email information.
+
+    Args:
+        email_info (Dict[str, str]): The email information dictionary.
+        info_name (str): The name of the information field to check.
+        feature_list (Dict[str, int]): The dictionary to store extracted features.
+        features (List[str]): The list of feature names.
+        conditions_check (List[str]): The list of conditions to check for each feature.
+    """
     for feature_name, condition_check in zip(features, conditions_check):
         if condition_check == "":
             feature_list[feature_name] = (
@@ -236,6 +287,14 @@ def get_str_features(
 
 
 def get_time_zone(email_info: Dict[str, str]) -> int:
+    """Determines the time zone from the email date.
+
+    Args:
+        email_info (Dict[str, str]): The email information dictionary.
+
+    Returns:
+        int: 0 if the time zone is UTC-4, 1 otherwise, -1 if parsing fails.
+    """
     time_zone = emailUtils.parsedate_tz(email_info["date"])
     if time_zone is None:
         return -1
@@ -243,6 +302,14 @@ def get_time_zone(email_info: Dict[str, str]) -> int:
 
 
 def get_date_date_received_diff(email_info: Dict[str, str]) -> int:
+    """Calculates the difference between the email date and the received date.
+
+    Args:
+        email_info (Dict[str, str]): The email information dictionary.
+
+    Returns:
+        int: 0 if the date difference is negative, 1 otherwise, -1 if parsing fails.
+    """
     date = emailUtils.parsedate_tz(email_info["date"])
     last_received = email_info["received_hop_" + str(email_info["hop_count"])]
     last_received_list = re.split(r";", last_received)
@@ -263,6 +330,12 @@ def get_date_date_received_diff(email_info: Dict[str, str]) -> int:
 def get_missing_features(
     email_info: Dict[str, str], feature_list: Dict[str, int]
 ) -> None:
+    """Checks for missing features in the email information.
+
+    Args:
+        email_info (Dict[str, str]): The email information dictionary.
+        feature_list (Dict[str, int]): The dictionary to store missing features.
+    """
     for name in email_info.keys():
         if "missing_" + name in FEATURES:
             feature_list["missing_" + name] = 1 if email_info[name] == "" else 0
@@ -270,6 +343,14 @@ def get_missing_features(
 
 
 def get_received_str_forged(email_info: Dict[str, str]) -> int:
+    """Checks if any received headers contain the word 'forged'.
+
+    Args:
+        email_info (Dict[str, str]): The email information dictionary.
+
+    Returns:
+        int: 1 if 'forged' is found, 0 otherwise.
+    """
     n = email_info["hop_count"]
     for i in range(1, n + 1):
         received = email_info["received_hop_" + str(i)]
@@ -279,6 +360,15 @@ def get_received_str_forged(email_info: Dict[str, str]) -> int:
 
 
 def check_if_valid(dict_to_check: Dict[str, str], str_val: str) -> bool:
+    """Checks if a value is valid in a dictionary.
+
+    Args:
+        dict_to_check (Dict[str, str]): The dictionary to check.
+        str_val (str): The value to check for.
+
+    Returns:
+        bool: True if the value is valid, False otherwise.
+    """
     if dict_to_check is None:
         return False
     elif str_val not in dict_to_check:
@@ -290,6 +380,14 @@ def check_if_valid(dict_to_check: Dict[str, str], str_val: str) -> bool:
 
 
 def get_for_domain_last_received(email_info: Dict[str, str]) -> str:
+    """Extracts the domain from the last received header.
+
+    Args:
+        email_info (Dict[str, str]): The email information dictionary.
+
+    Returns:
+        str: The extracted domain or 'NA' if not found.
+    """
     last_received_val = email_info.get("last_received", "")
     parsed_val = receivedParser.parse(last_received_val)
     if check_if_valid(parsed_val, "envelope_for"):
@@ -305,6 +403,15 @@ def get_for_domain_last_received(email_info: Dict[str, str]) -> str:
 def check_for_received_domain_equal(
     email_info: Dict[str, str], field_vals: List[str]
 ) -> int:
+    """Checks if the domain from the last received header matches any given domains.
+
+    Args:
+        email_info (Dict[str, str]): The email information dictionary.
+        field_vals (List[str]): The list of domains to check against.
+
+    Returns:
+        int: 1 if a match is found, 0 otherwise, -1 if no valid domain is found.
+    """
     get_for_domain = get_for_domain_last_received(email_info)
     if get_for_domain == "NA" or not field_vals:
         return -1
@@ -312,6 +419,14 @@ def check_for_received_domain_equal(
 
 
 def get_from_domain_first_received(email_info: Dict[str, str]) -> List[str]:
+    """Extracts domains from the first received header.
+
+    Args:
+        email_info (Dict[str, str]): The email information dictionary.
+
+    Returns:
+        List[str]: A list of extracted domains.
+    """
     first_received_val = email_info["first_received"]
     parsed_val = receivedParser.parse(first_received_val)
     domains_list = []
@@ -327,6 +442,15 @@ def get_from_domain_first_received(email_info: Dict[str, str]) -> List[str]:
 def check_received_from_domain_equal(
     email_info: Dict[str, str], field_vals: List[str]
 ) -> int:
+    """Checks if the domains from the first received header match any given domains.
+
+    Args:
+        email_info (Dict[str, str]): The email information dictionary.
+        field_vals (List[str]): The list of domains to check against.
+
+    Returns:
+        int: 1 if a match is found, 0 otherwise, -1 if no valid domain is found.
+    """
     domains_list_check = get_from_domain_first_received(email_info)
     if not domains_list_check or not field_vals:
         return -1
@@ -338,6 +462,14 @@ def check_received_from_domain_equal(
 
 
 def get_features_array(email_info: Dict[str, str]) -> List[int]:
+    """Extracts features from email information and returns them as an array.
+
+    Args:
+        email_info (Dict[str, str]): The email information dictionary.
+
+    Returns:
+        List[int]: An array of extracted features.
+    """
     features_dict = {}
     features_dict["time_zone"] = get_time_zone(email_info)
     features_dict["date_comp_date_received"] = get_date_date_received_diff(email_info)
@@ -524,6 +656,14 @@ def get_features_array(email_info: Dict[str, str]) -> List[int]:
 
 
 def get_email_info(email_path: str) -> Union[Dict[str, str], int]:
+    """Reads and parses email information from a file.
+
+    Args:
+        email_path (str): The path to the email file.
+
+    Returns:
+        Union[Dict[str, str], int]: The parsed email information dictionary or -1 if an error occurs.
+    """
     email_dict = {column: "" for column in HEADER_INFORMATION}
     try:
         with open(email_path, "r", encoding="latin_1") as email_file:
@@ -551,6 +691,16 @@ def get_email_info(email_path: str) -> Union[Dict[str, str], int]:
 def process_email(
     line: str, email_cache: Dict[str, List[int]], label_dict: Dict[str, int]
 ) -> Tuple[Union[List[int], None], Union[int, None], Union[str, None]]:
+    """Processes a single email line to extract features and label.
+
+    Args:
+        line (str): The email line to process.
+        email_cache (Dict[str, List[int]]): A cache to store processed email features.
+        label_dict (Dict[str, int]): A dictionary mapping labels to integers.
+
+    Returns:
+        Tuple[Union[List[int], None], Union[int, None], Union[str, None]]: The extracted features, label, and email path.
+    """
     label, email_path = line.split(" ")
     if email_path not in email_cache:
         email_info = get_email_info(email_path)
@@ -563,6 +713,16 @@ def process_email(
 def get_training_test_set(
     index_path: str, values: List[str], percent: float
 ) -> Tuple[List[List[int]], List[int]]:
+    """Generates training and test sets from the given index file.
+
+    Args:
+        index_path (str): The path to the index file.
+        values (List[str]): The list of values to include.
+        percent (float): The percentage of data to use.
+
+    Returns:
+        Tuple[List[List[int]], List[int]]: The training set and labels.
+    """
     with open(index_path, "r", encoding="latin_1") as f:
         lines = f.readlines()
     lines = [line.strip() for line in lines if line.split(" ")[0] in values]
@@ -588,6 +748,14 @@ def get_training_test_set(
 def get_example_test_set(
     index_path: str,
 ) -> Tuple[List[List[int]], List[int], List[str]]:
+    """Generates an example test set from the given index file.
+
+    Args:
+        index_path (str): The path to the index file.
+
+    Returns:
+        Tuple[List[List[int]], List[int], List[str]]: The test set, labels, and email paths.
+    """
     with open(index_path, "r", encoding="latin_1") as f:
         lines = f.readlines()
     lines = [line.strip() for line in lines]
@@ -608,7 +776,8 @@ def get_example_test_set(
     return test_set, labels, email_paths
 
 
-def main():
+def main() -> None:
+    """Main function to start the data extraction process."""
     logging.info("Starting data extraction process...")
     index_path = "Dataset/index"
     values = ["ham", "phishing"]

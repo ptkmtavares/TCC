@@ -15,6 +15,8 @@ torch.cuda.empty_cache()
 
 
 class MLP(nn.Module):
+    """Multilayer Perceptron (MLP) model"""
+
     def __init__(
         self,
         input_dim: int,
@@ -24,7 +26,19 @@ class MLP(nn.Module):
         l1_lambda: float = 0.0002,
         l2_lambda: float = 0.0005,
         dropout: float = 0.3,
-    ):
+    ) -> None:
+        """
+        Initialize the MLP model.
+
+        Args:
+            input_dim (int): Dimension of the input layer.
+            hidden_dim1 (int): Dimension of the first hidden layer.
+            hidden_dim2 (int): Dimension of the second hidden layer.
+            output_dim (int): Dimension of the output layer.
+            l1_lambda (float, optional): L1 regularization coefficient. Defaults to 0.0002.
+            l2_lambda (float, optional): L2 regularization coefficient. Defaults to 0.0005.
+            dropout (float, optional): Dropout rate. Defaults to 0.3.
+        """
         super(MLP, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim1)
         self.relu1 = nn.ReLU()
@@ -37,6 +51,15 @@ class MLP(nn.Module):
         self.l2_lambda = l2_lambda
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the MLP model.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output tensor.
+        """
         out = self.fc1(x)
         out = self.relu1(out)
         out = self.dropout1(out)
@@ -47,15 +70,37 @@ class MLP(nn.Module):
         return out
 
     def l1_penalty(self) -> torch.Tensor:
+        """
+        Calculate L1 regularization penalty.
+
+        Returns:
+            torch.Tensor: L1 penalty.
+        """
         l1_norm = sum(p.abs().sum() for p in self.parameters())
         return self.l1_lambda * l1_norm
 
     def l2_penalty(self) -> torch.Tensor:
+        """
+        Calculate L2 regularization penalty.
+
+        Returns:
+            torch.Tensor: L2 penalty.
+        """
         l2_norm = sum(p.pow(2.0).sum() for p in self.parameters())
         return self.l2_lambda * l2_norm
 
 
 def predict_mlp(model: MLP, X_test: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Make predictions using the MLP model.
+
+    Args:
+        model (MLP): Trained MLP model.
+        X_test (torch.Tensor): Test data.
+
+    Returns:
+        Tuple[torch.Tensor, torch.Tensor]: Predicted labels and probabilities.
+    """
     try:
         model.eval()
         with torch.no_grad(), amp.autocast("cuda"):
@@ -79,6 +124,24 @@ def train_mlp(
     patience: int = 15,
     printInfo: bool = True,
 ) -> float:
+    """
+    Train the MLP model.
+
+    Args:
+        model (MLP): MLP model to be trained.
+        criterion (nn.Module): Loss function.
+        optimizer (torch.optim.Optimizer): Optimizer.
+        X_train (torch.Tensor): Training data.
+        y_train (torch.Tensor): Training labels.
+        X_val (torch.Tensor): Validation data.
+        y_val (torch.Tensor): Validation labels.
+        num_epochs (int, optional): Number of epochs. Defaults to 10000.
+        patience (int, optional): Early stopping patience. Defaults to 15.
+        printInfo (bool, optional): Whether to print training info. Defaults to True.
+
+    Returns:
+        float: Best validation loss.
+    """
     scaler = amp.GradScaler("cuda")
     best_val_loss = float("inf")
     patience_counter = 0
@@ -134,6 +197,18 @@ def train_mlp(
 def evaluate_mlp(
     model: MLP, X_test: torch.Tensor, y_test: torch.Tensor, printInfo: bool = True
 ) -> float:
+    """
+    Evaluate the MLP model.
+
+    Args:
+        model (MLP): Trained MLP model.
+        X_test (torch.Tensor): Test data.
+        y_test (torch.Tensor): Test labels.
+        printInfo (bool, optional): Whether to print evaluation info. Defaults to True.
+
+    Returns:
+        float: Accuracy of the model.
+    """
     try:
         model.eval()
         with torch.no_grad(), amp.autocast("cuda"):
