@@ -13,7 +13,7 @@ from rayParam import get_hyperparameters
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 1024
 TRAIN_SPLIT = 0.75
-NUM_EPOCHS_GAN = 5625
+NUM_EPOCHS_GAN = 5967
 CHECKPOINT_DIR = 'checkpoints/phishing/'
 INDEX_DIR = 'Dataset/index'
 EXAMPLE_DIR = 'Dataset/exampleIndex'
