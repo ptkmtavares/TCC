@@ -1,11 +1,13 @@
 import logging
 from email.parser import HeaderParser
+import os
 import re
 import email.utils as emailUtils
 import random
 import concurrent.futures
 from typing import List, Tuple, Dict, Union
 from receivedParser import ReceivedParser
+from dataOrganizer import main as organize_data
 
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
@@ -723,6 +725,9 @@ def get_training_test_set(
     Returns:
         Tuple[List[List[int]], List[int]]: The training set and labels.
     """
+    if not os.path.exists(index_path):
+        logging.info("Index file not found. Creating index using dataOrganizer...")
+        organize_data()
     with open(index_path, "r", encoding="latin_1") as f:
         lines = f.readlines()
     lines = [line.strip() for line in lines if line.split(" ")[0] in values]
