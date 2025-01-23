@@ -3,9 +3,10 @@ import shutil
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Tuple
+from config import LOG_FORMAT, DATA_DIR, INDEX_PATH, SPAM_HAM_DATA_DIR, SPAM_HAM_INDEX_PATH, PHISHING_DIR
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format=LOG_FORMAT
 )
 
 
@@ -162,11 +163,11 @@ def __write_phishing_emails(
 
 def main():
     """Main function to organize the dataset."""
-    data_folder_path = "Dataset/data"
-    index_path = "Dataset/index"
-    spam_ham_data_path = "Dataset/SpamHam/trec07p/data"
-    spam_ham_index_path = "Dataset/SpamHam/trec07p/full/index"
-    phishing_folder_path = "Dataset/Phishing/TXTs"
+    data_folder_path = DATA_DIR
+    index_path = INDEX_PATH
+    spam_ham_data_path = SPAM_HAM_DATA_DIR
+    spam_ham_index_path = SPAM_HAM_INDEX_PATH
+    phishing_folder_path = PHISHING_DIR
 
     __setup_directories(data_folder_path, index_path)
 

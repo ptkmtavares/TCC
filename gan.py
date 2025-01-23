@@ -6,13 +6,9 @@ import torch.optim as optim
 import time
 import os
 import logging
-
-DELIMETER = "=" * 75
-LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+from config import DELIMETER, LOG_FORMAT
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-torch.backends.cudnn.benchmark = True
-torch.cuda.empty_cache()
 
 
 class Generator(nn.Module):

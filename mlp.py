@@ -5,13 +5,7 @@ import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 import logging
 from typing import Tuple
-
-DELIMETER = "=" * 75
-LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-
-logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-torch.backends.cudnn.benchmark = True
-torch.cuda.empty_cache()
+from config import DELIMETER
 
 
 class MLP(nn.Module):
@@ -179,7 +173,8 @@ def train_mlp(
                     logging.info(f"Early stopping at epoch {epoch + 1}")
                 break
 
-            if (epoch + 1) % (num_epochs // 4) == 0:
+            print_interval = num_epochs // 4
+            if (epoch + 1) % print_interval == 0 or (epoch + 1) == num_epochs:
                 if printInfo:
                     logging.info(
                         f"\nEpoch [{epoch + 1}/{num_epochs}]\n"

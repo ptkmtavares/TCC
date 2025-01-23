@@ -9,13 +9,7 @@ from ray.tune.experiment.trial import Trial
 from ray.air import session
 from mlp import MLP, train_mlp, predict_mlp
 from typing import Dict, Any, List
-
-LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-torch.backends.cudnn.benchmark = True
-torch.cuda.empty_cache()
+from config import DEVICE
 
 
 def __train_mlp_tune(
@@ -65,7 +59,7 @@ def __train_mlp_tune(
             model.parameters(), lr=config["lr"], weight_decay=config["weight_decay"]
         )
 
-        train_mlp(
+        val_loss = train_mlp(
             model,
             criterion,
             optimizer,
@@ -83,7 +77,7 @@ def __train_mlp_tune(
         correct_probabilities = label_probabilities[range(len(y_example)), y_example]
         accuracy = correct_probabilities.mean().item()
 
-        session.report({"accuracy": accuracy})
+        session.report({"accuracy": accuracy, "val_loss": val_loss})
 
     finally:
         del model, X_train, y_train, X_test, y_test, X_example, y_example
@@ -134,21 +128,8 @@ def get_hyperparameters(
             "lr": tune.loguniform(2e-5, 2.8e-5),
             "weight_decay": tune.loguniform(4e-4, 6e-4),
             "num_epochs": tune.lograndint(3500, 4500),
-            "patience": 4500,
+            "patience": tune.randint(100, 200),
             "dropout": tune.uniform(0.27, 0.28),
-        }
-
-    if config == "spam":
-        config = {
-            "l1_lambda": tune.loguniform(9e-5, 2e-4),
-            "l2_lambda": tune.loguniform(9e-4, 3e-3),
-            "hidden_dim1": tune.choice([128, 256, 512]),
-            "hidden_dim2": tune.choice([64, 128, 256]),
-            "lr": tune.loguniform(1e-4, 1e-3),
-            "weight_decay": tune.loguniform(1e-4, 1e-3),
-            "num_epochs": tune.lograndint(5000, 10000),
-            "patience": tune.randint(150, 300),
-            "dropout": tune.uniform(0.23, 0.29),
         }
 
     scheduler = ASHAScheduler(
@@ -177,4 +158,4 @@ def get_hyperparameters(
         logging.error(f"Error during hyperparameter tuning: {e}")
         raise
 
-    return analysis.get_best_config(metric="accuracy", mode="max")
+    return analysis.get_best_config(metric="val_loss", mode="min")

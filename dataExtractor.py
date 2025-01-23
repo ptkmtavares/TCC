@@ -8,9 +8,10 @@ import concurrent.futures
 from typing import List, Tuple, Dict, Union
 from receivedParser import ReceivedParser
 from dataOrganizer import main as organize_data
+from config import INDEX_PATH, LOG_FORMAT
 
-LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+
 parser = HeaderParser()
 receivedParser = ReceivedParser()
 
@@ -784,9 +785,9 @@ def get_example_test_set(
 
 
 def main() -> None:
-    """Main function to start the data extraction process."""
+    """Main function to test the data extraction process."""
     logging.info("Starting data extraction process...")
-    index_path = "Dataset/index"
+    index_path = INDEX_PATH
     values = ["ham", "phishing"]
     percent = 1.0
     train_set, labels = get_training_test_set(index_path, values, percent)
