@@ -5,7 +5,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Logging
 DELIMITER = "=" * 75
-LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s\n"
+LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
 # Caminhos
 CHECKPOINT_DIR = "checkpoints/phishing/"
