@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 import logging
 from typing import Tuple
-from config import DELIMETER
+from config import DELIMITER
 
 
 class MLP(nn.Module):
@@ -180,7 +180,7 @@ def train_mlp(
                         f"\nEpoch [{epoch + 1}/{num_epochs}]\n"
                         f"Loss: {loss.item():.4f}\n"
                         f"Validation Loss: {val_loss.item():.4f}\n"
-                        f"{DELIMETER}"
+                        f"{DELIMITER}"
                     )
                 torch.cuda.empty_cache()
 
@@ -215,7 +215,7 @@ def evaluate_mlp(
             cm = confusion_matrix(y_test.cpu(), predicted.cpu())
             if printInfo:
                 logging.info(
-                    f"\nConfusion matrix for MLP classifier:\n" f"{cm}\n" f"{DELIMETER}"
+                    f"\nConfusion matrix for MLP classifier:\n" f"{cm}\n" f"{DELIMITER}"
                 )
             return accuracy
     finally:

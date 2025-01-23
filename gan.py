@@ -6,7 +6,7 @@ import torch.optim as optim
 import time
 import os
 import logging
-from config import DELIMETER, LOG_FORMAT
+from config import DELIMITER, LOG_FORMAT
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
@@ -210,11 +210,11 @@ def train_gan(
             if start_epoch >= num_epochs:
                 logging.info(
                     f"\nCheckpoint epoch is greater than or equal to num_epochs. Returning...\n"
-                    f"{DELIMETER}"
+                    f"{DELIMITER}"
                 )
                 return
             logging.info(
-                f"\nResuming training from epoch {start_epoch}\n" f"{DELIMETER}"
+                f"\nResuming training from epoch {start_epoch}\n" f"{DELIMITER}"
             )
         save_interval = (num_epochs - start_epoch) // 4
 
@@ -264,7 +264,7 @@ def train_gan(
                     f"D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f}\n"
                     f"Time for this epoch: {epoch_duration:.2f} seconds\n"
                     f"Estimated remaining time: {remaining_time:.2f} seconds\n"
-                    f"{DELIMETER}"
+                    f"{DELIMITER}"
                 )
                 __save_checkpoint(
                     G, D, optimizer_G, optimizer_D, epoch + 1, checkpoint_dir
