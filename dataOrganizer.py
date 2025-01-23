@@ -3,11 +3,16 @@ import shutil
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Tuple
-from config import LOG_FORMAT, DATA_DIR, INDEX_PATH, SPAM_HAM_DATA_DIR, SPAM_HAM_INDEX_PATH, PHISHING_DIR
-
-logging.basicConfig(
-    level=logging.INFO, format=LOG_FORMAT
+from config import (
+    LOG_FORMAT,
+    DATA_DIR,
+    INDEX_PATH,
+    SPAM_HAM_DATA_DIR,
+    SPAM_HAM_INDEX_PATH,
+    PHISHING_DIR,
 )
+
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
 
 def __setup_directories(data_path: str, index_path: str) -> None:

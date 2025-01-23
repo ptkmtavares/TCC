@@ -9,7 +9,14 @@ from torch.utils.data import DataLoader, TensorDataset, random_split
 from mlp import MLP, predict_mlp, train_mlp, evaluate_mlp
 from gan import Generator, Discriminator, train_gan, generate_adversarial_examples
 from rayParam import get_hyperparameters
-from config import DEVICE, DELIMITER, LOG_FORMAT, INDEX_PATH, EXAMPLE_PATH, CHECKPOINT_DIR
+from config import (
+    DEVICE,
+    DELIMITER,
+    LOG_FORMAT,
+    INDEX_PATH,
+    EXAMPLE_PATH,
+    CHECKPOINT_DIR,
+)
 
 BATCH_SIZE = 1024
 TRAIN_SPLIT = 0.75

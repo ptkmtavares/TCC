@@ -16,4 +16,3 @@ DATA_DIR = "Dataset/data"
 SPAM_HAM_DATA_DIR = "Dataset/SpamHam/trec07p/data"
 SPAM_HAM_INDEX_PATH = "Dataset/index"
 PHISHING_DIR = "Dataset/Phishing/TXTs"
-
