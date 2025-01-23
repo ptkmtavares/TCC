@@ -9,20 +9,29 @@ from torch.utils.data import DataLoader, TensorDataset, random_split
 from mlp import MLP, predict_mlp, train_mlp, evaluate_mlp
 from gan import Generator, Discriminator, train_gan, generate_adversarial_examples
 from rayParam import get_hyperparameters
+from config import DEVICE, DELIMITER, LOG_FORMAT, INDEX_PATH, EXAMPLE_PATH, CHECKPOINT_DIR
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 1024
 TRAIN_SPLIT = 0.75
 NUM_EPOCHS_GAN = 5967
-CHECKPOINT_DIR = "checkpoints/phishing/"
-INDEX_DIR = "Dataset/index"
-EXAMPLE_DIR = "Dataset/exampleIndex"
-DELIMITER = "=" * 75
-LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s\n"
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-torch.backends.cudnn.benchmark = True
 torch.cuda.empty_cache()
+
+
+def set_seed(seed: int) -> None:
+    """Sets the seed for reproducibility.
+
+    Args:
+        seed (int): The seed value.
+    """
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 def __load_and_preprocess_data() -> (
@@ -31,15 +40,15 @@ def __load_and_preprocess_data() -> (
     """Loads and preprocesses the data for training and testing.
 
     Returns:
-        Tuple[TensorDataset, TensorDataset, torch.Tensor, torch.Tensor, int]: 
+        Tuple[TensorDataset, TensorDataset, torch.Tensor, torch.Tensor, int]:
         The training dataset, test dataset, data tensor, index tensor, and input dimension.
-    """    
+    """
     try:
         logging.info(
             f"\n{DELIMITER}\n" f"Loading and preprocessing data...\n" f"{DELIMITER}"
         )
         selected_data = ["ham", "phishing"]
-        data, index = get_training_test_set(INDEX_DIR, selected_data, 1.0)
+        data, index = get_training_test_set(INDEX_PATH, selected_data, 1.0)
 
         sample_counts = np.bincount(index)
         logging.info(
@@ -79,7 +88,7 @@ def __setup_gan(
 
     Returns:
         Generator: The trained generator model.
-    """    
+    """
     logging.info(f"\nTraining GAN for phishing...\n" f"{DELIMITER}")
     phishing_data = train_set[train_labels.cpu().numpy() == 1]
     phishing_labels = train_labels[train_labels.cpu().numpy() == 1]
@@ -119,7 +128,7 @@ def __generate_and_augment_data(
 
     Returns:
         Tuple[np.ndarray, np.ndarray]: The augmented training set and labels.
-    """    
+    """
     logging.info(f"\nGenerating adversarial examples...\n" f"{DELIMITER}")
     ham_data = train_set[train_labels.cpu().numpy() == 0]
     phishing_data = train_set[train_labels.cpu().numpy() == 1]
@@ -168,12 +177,12 @@ def __train_and_evaluate_mlp(
 
     Returns:
         Tuple[MLP, float, float]: The trained MLP model, accuracy with augmented data, and accuracy without augmented data.
-    """    
+    """
     try:
         logging.info(
             f"\nTraining and evaluating the MLP with augmented data...\n" f"{DELIMITER}"
         )
-        example_data, example_index, _ = get_example_test_set(EXAMPLE_DIR)
+        example_data, example_index, _ = get_example_test_set(EXAMPLE_PATH)
         best_config = get_hyperparameters(
             augmented_train_set,
             test_set,
@@ -280,8 +289,9 @@ def __train_and_evaluate_mlp(
 
 
 def main() -> None:
-    """Main function to execute the training and evaluation process."""    
+    """Main function to execute the training and evaluation process."""
     try:
+        set_seed(42)
         train_dataset, test_dataset, data_tensor, index_tensor, input_dim = (
             __load_and_preprocess_data()
         )
@@ -313,7 +323,7 @@ def main() -> None:
         )
 
         logging.info("Testing with example test set...")
-        example_data, example_index, email_paths = get_example_test_set(EXAMPLE_DIR)
+        example_data, example_index, email_paths = get_example_test_set(EXAMPLE_PATH)
         X_example_test = torch.tensor(example_data, dtype=torch.float32).to(DEVICE)
 
         predicted_example_label, label_probabilities = predict_mlp(
