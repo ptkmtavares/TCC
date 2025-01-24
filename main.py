@@ -20,7 +20,8 @@ from config import (
     MLP_ORIGINAL_PLOT_PATH,
     MLP_AUGMENTED_PLOT_PATH,
     GAN_PLOT_PATH,
-    FEATURE_DISTRIBUTION_PLOT_PATH,
+    FD_ORIGINAL_DATA_PLOT_PATH,
+    FD_AUGMENTED_DATA_PLOT_PATH,
 )
 
 BATCH_SIZE = 1024
@@ -69,10 +70,8 @@ def __load_and_preprocess_data() -> (
             f"{DELIMITER}"
         )
 
-        plot_feature_distribution(data, FEATURE_DISTRIBUTION_PLOT_PATH)
-
-        data_tensor = torch.tensor(data, dtype=torch.float32, pin_memory=True)
-        index_tensor = torch.tensor(index, dtype=torch.float32, pin_memory=True)
+        data_tensor = torch.tensor(data, dtype=torch.float32).pin_memory()
+        index_tensor = torch.tensor(index, dtype=torch.float32).pin_memory()
 
         dataset = TensorDataset(data_tensor, index_tensor)
         train_size = int(TRAIN_SPLIT * len(dataset))
@@ -263,11 +262,14 @@ def __train_and_evaluate_mlp(
             patience=best_config["patience"],
         )
 
-        plot_mlp_training(
-            augmented_train_loss, augmented_val_loss, MLP_AUGMENTED_PLOT_PATH
+        accuracy_augmented, cm_augmented = evaluate_mlp(model_augmented, X_test, y_test)
+        logging.info(
+            f"\nConfusion matrix for MLP classifier:\n" f"{cm_augmented}\n" f"{DELIMITER}"
         )
-
-        accuracy_augmented = evaluate_mlp(model_augmented, X_test, y_test)
+        
+        plot_mlp_training(
+            augmented_train_loss, augmented_val_loss, cm_augmented, MLP_AUGMENTED_PLOT_PATH
+        )
 
         logging.info(
             f"\nTraining and evaluating the MLP without augmented data...\n"
@@ -303,11 +305,14 @@ def __train_and_evaluate_mlp(
             patience=best_config["patience"],
         )
 
-        plot_mlp_training(
-            original_train_loss, original_val_loss, MLP_ORIGINAL_PLOT_PATH
+        accuracy_original, cm_original = evaluate_mlp(model_original, X_test, y_test)
+        logging.info(
+            f"\nConfusion matrix for MLP classifier:\n" f"{cm_original}\n" f"{DELIMITER}"
         )
-
-        accuracy_original = evaluate_mlp(model_original, X_test, y_test)
+        
+        plot_mlp_training(
+            original_train_loss, original_val_loss, cm_original, MLP_ORIGINAL_PLOT_PATH
+        )
 
         return model_augmented, accuracy_augmented, accuracy_original
     finally:
@@ -327,10 +332,25 @@ def main() -> None:
         train_labels = index_tensor[train_dataset.indices]
         test_labels = index_tensor[test_dataset.indices]
 
+        ham_data_original = train_set[train_labels.cpu().numpy() == 0]
+        phishing_data_original = train_set[train_labels.cpu().numpy() == 1]
+        plot_feature_distribution(
+            ham_data_original, phishing_data_original, FD_ORIGINAL_DATA_PLOT_PATH
+        )
+
         g_phishing = __setup_gan(train_set, train_labels, input_dim)
         augmented_train_set, augmented_train_labels = __generate_and_augment_data(
             g_phishing, train_set, train_labels, input_dim
         )
+
+        ham_data_augmented = augmented_train_set[augmented_train_labels == 0].tolist()
+        phishing_data_augmented = augmented_train_set[
+            augmented_train_labels == 1
+        ].tolist()
+        plot_feature_distribution(
+            ham_data_augmented, phishing_data_augmented, FD_AUGMENTED_DATA_PLOT_PATH
+        )
+
         mlp_augmented, accuracy_augmented, accuracy_original = __train_and_evaluate_mlp(
             train_set.cpu().numpy(),
             train_labels.cpu().numpy(),

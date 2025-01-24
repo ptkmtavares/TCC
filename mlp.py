@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.amp as amp
 import torch.nn as nn
@@ -196,8 +197,8 @@ def train_mlp(
 
 
 def evaluate_mlp(
-    model: MLP, X_test: torch.Tensor, y_test: torch.Tensor, printInfo: bool = True
-) -> float:
+    model: MLP, X_test: torch.Tensor, y_test: torch.Tensor
+) -> Tuple[float, np.ndarray]:
     """
     Evaluate the MLP model.
 
@@ -205,10 +206,10 @@ def evaluate_mlp(
         model (MLP): Trained MLP model.
         X_test (torch.Tensor): Test data.
         y_test (torch.Tensor): Test labels.
-        printInfo (bool, optional): Whether to print evaluation info. Defaults to True.
 
     Returns:
         float: Accuracy of the model.
+        np.ndarray: Confusion matrix.
     """
     try:
         model.eval()
@@ -219,10 +220,6 @@ def evaluate_mlp(
             accuracy = (predicted == y_test).sum().item() / y_test.size(0) * 100
 
             cm = confusion_matrix(y_test.cpu(), predicted.cpu())
-            if printInfo:
-                logging.info(
-                    f"\nConfusion matrix for MLP classifier:\n" f"{cm}\n" f"{DELIMITER}"
-                )
-            return accuracy
+            return accuracy, cm
     finally:
         torch.cuda.empty_cache()

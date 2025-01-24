@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 from email.parser import HeaderParser
 import os
 import re
@@ -13,7 +14,7 @@ from config import (
     LOG_FORMAT,
     FEATURES,
     HEADER_INFORMATION,
-    FEATURE_DISTRIBUTION_PLOT_PATH,
+    FD_ORIGINAL_DATA_PLOT_PATH,
 )
 from plot import plot_feature_distribution
 
@@ -580,7 +581,7 @@ def __process_email(
 
 def get_training_test_set(
     index_path: str, values: List[str], percent: float
-) -> Tuple[List[List[int]], List[int]]:
+) -> Tuple[np.ndarray, np.ndarray]:
     """Generates training and test sets from the given index file.
 
     Args:
@@ -589,7 +590,7 @@ def get_training_test_set(
         percent (float): The percentage of data to use.
 
     Returns:
-        Tuple[List[List[int]], List[int]]: The training set and labels.
+        Tuple[np.ndarray, np.ndarray]: The training set and labels.
     """
     if not os.path.exists(index_path):
         logging.info("Index file not found. Creating index using dataOrganizer...")
@@ -613,6 +614,8 @@ def get_training_test_set(
             if features is not None and label is not None:
                 train_set.append(features)
                 labels.append(label)
+    train_set = np.array(train_set)
+    labels = np.array(labels)
     return train_set, labels
 
 
@@ -658,8 +661,8 @@ def main() -> None:
     train_set, labels = get_training_test_set(index_path, values, percent)
     logging.info(f"Training set size: {len(train_set)}, Labels size: {len(labels)}")
 
-    plot_feature_distribution(train_set, labels, FEATURE_DISTRIBUTION_PLOT_PATH)
-    logging.info(f"Feature distribution plot saved to {FEATURE_DISTRIBUTION_PLOT_PATH}")
+    plot_feature_distribution(train_set, labels, FD_ORIGINAL_DATA_PLOT_PATH)
+    logging.info(f"Feature distribution plot saved to {FD_ORIGINAL_DATA_PLOT_PATH}")
 
 
 if __name__ == "__main__":

@@ -7,6 +7,9 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DELIMITER = "=" * 75
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
+# Ray Tune
+NUM_SAMPLES = 1
+
 # Caminhos
 DATASET_DIR = "Dataset/"
 CHECKPOINT_DIR = "checkpoints/phishing/"
@@ -18,13 +21,14 @@ SPAM_HAM_DATA_DIR = DATASET_DIR + "SpamHam/trec07p/data"
 SPAM_HAM_INDEX_PATH = DATASET_DIR + "SpamHam/trec07p/full/index"
 PHISHING_DIR = DATASET_DIR + "Phishing/TXTs"
 
-# Plot
+# Plots
 PLOT_DIR = "plots/"
 MLP_ORIGINAL_PLOT_PATH = PLOT_DIR + "mlp_original.svg"
 MLP_AUGMENTED_PLOT_PATH = PLOT_DIR + "mlp_augmented.svg"
 GAN_PLOT_PATH = PLOT_DIR + "gan.svg"
 RAYTUNE_PLOT_PATH = PLOT_DIR + "raytune_results.svg"
-FEATURE_DISTRIBUTION_PLOT_PATH = PLOT_DIR + "feature_distribution.svg"
+FD_ORIGINAL_DATA_PLOT_PATH = PLOT_DIR + "fd_original.svg"
+FD_AUGMENTED_DATA_PLOT_PATH = PLOT_DIR + "fd_augmented.svg"
 
 # Features e informações do cabeçalho
 FEATURES = [

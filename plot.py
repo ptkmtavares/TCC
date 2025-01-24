@@ -1,23 +1,35 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from ray.tune.analysis import ExperimentAnalysis
 from typing import List
 from config import FEATURES
+from pandas import DataFrame
 
 
-def plot_feature_distribution(features: List[List[int]], output_path: str) -> None:
-    """Plots the distribution of features and saves as an SVG file.
+def plot_feature_distribution(ham_features: np.ndarray, phishing_features: np.ndarray, output_path: str) -> None:
+    """Plots the distribution of ham and phishing features and saves as an SVG file.
 
     Args:
-        features (List[List[int]]): The list of feature arrays.
+        ham_features (np.ndarray): The list of ham feature arrays.
+        spam_features (np.ndarray): The list of phishing feature arrays.
         output_path (str): The path to save the SVG file.
     """
-    feature_counts = [sum(feature) for feature in zip(*features)]
+    ham_feature_counts = [sum(map(abs, feature)) for feature in zip(*ham_features)]
+    phishing_feature_counts = [sum(map(abs, feature)) for feature in zip(*phishing_features)]
+    total_ham = len(ham_features)
+    total_phishing = len(phishing_features)
     feature_names = FEATURES
 
-    plt.figure(figsize=(10, 8))
-    plt.barh(feature_names, feature_counts, color="skyblue")
-    plt.xlabel("Count")
-    plt.title("Feature Distribution")
+    _, axs = plt.subplots(1, 2, figsize=(20, 8), sharey=True)
+
+    axs[0].barh(feature_names, ham_feature_counts, color="skyblue")
+    axs[0].set_xlabel("Count")
+    axs[0].set_title(f"{'Augmented ' if total_ham == total_phishing else ''}Ham Feature Distribution (Total:{total_ham})")
+
+    axs[1].barh(feature_names, phishing_feature_counts, color="salmon")
+    axs[1].set_xlabel("Count")
+    axs[1].set_title(f"{'Augmented ' if total_ham == total_phishing else ''}Phishing Feature Distribution (Total:{total_phishing})")
+
     plt.tight_layout()
     plt.savefig(output_path, format="svg", transparent=True)
     plt.close()
@@ -30,29 +42,53 @@ def plot_ray_results(analysis: ExperimentAnalysis, output_path: str) -> None:
         analysis (ExperimentAnalysis): The analysis object returned by tune.run.
         output_path (str): The path to save the SVG file.
     """
-    df = analysis.results_df
-    plt.figure(figsize=(10, 5))
+    best_trial = analysis.get_best_trial("val_loss", "min", "last")
+    df: DataFrame = analysis.results_df
+    dropped_trials: List[str] = []
+    for trial in analysis.trials:
+        if trial.last_result["accuracy"] < 0.82:
+            dropped_trials.append(trial.trial_id)
 
-    plt.subplot(1, 2, 1)
-    plt.plot(df["accuracy"], label="Accuracy")
-    plt.xlabel("Trial")
-    plt.ylabel("Accuracy")
-    plt.title("Accuracy over Trials")
-    plt.legend()
+        config = trial.config
+        for param, value in config.items():
+            df.loc[trial.trial_id, param] = value
 
-    plt.subplot(1, 2, 2)
-    plt.plot(df["val_loss"], label="Validation Loss")
-    plt.xlabel("Trial")
-    plt.ylabel("Validation Loss")
-    plt.title("Validation Loss over Trials")
-    plt.legend()
+    plot_list = [
+        "accuracy",
+        "val_loss",
+        "l1_lambda",
+        "l2_lambda",
+        "hidden_dim1",
+        "hidden_dim2",
+        "lr",
+        "weight_decay",
+        "num_epochs",
+        "patience",
+        "dropout",
+    ]
 
+    num_plots = len(plot_list)
+    plt.figure(figsize=(15, 5 * num_plots))
+    for i, param in enumerate(plot_list, start=1):
+        plt.subplot(num_plots, 1, i)
+        plt.plot(df[param], label=param)
+        plt.xticks(rotation=90)
+        plt.xlabel("Trial")
+        plt.ylabel(param)
+        plt.title(f"{param} over Trials")
+        plt.legend()
+        plt.grid(axis="x", linestyle="--")
+        plt.axvline(x=best_trial.trial_id, color="green", linestyle="--")
+        for trial_id in dropped_trials:
+            plt.axvline(x=trial_id, color="red", linestyle="--")
+
+    plt.tight_layout()
     plt.savefig(output_path, format="svg", transparent=True)
     plt.close()
 
 
 def plot_mlp_training(
-    train_losses: list, val_losses: list, output_path: str = "training_plot.svg"
+    train_losses: list, val_losses: list, cm: np.ndarray, output_path: str = "training_plot.svg"
 ) -> None:
     """
     Plots the training and validation loss over epochs and saves the plot as an SVG file.
@@ -60,15 +96,37 @@ def plot_mlp_training(
     Args:
         train_losses (list): List of training losses.
         val_losses (list): List of validation losses.
+        cm (np.ndarray): Confusion matrix.
         output_path (str, optional): Path to save the SVG file. Defaults to "training_plot.svg".
     """
-    plt.figure(figsize=(10, 6))
-    plt.plot(train_losses, label="Training Loss")
-    plt.plot(val_losses, label="Validation Loss")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.title("Training and Validation Loss")
-    plt.legend()
+    fig, axs = plt.subplots(1, 2, figsize=(20, 6))
+    class_names = ["Ham", "Phishing"]
+
+    axs[0].plot(train_losses, label="Training Loss")
+    axs[0].plot(val_losses, label="Validation Loss")
+    axs[0].set_xlabel("Epochs")
+    axs[0].set_ylabel("Loss")
+    axs[0].set_ylim(0.0, 0.8)
+    axs[0].set_title("Training and Validation Loss")
+    axs[0].legend()
+
+    cax = axs[1].matshow(cm, cmap=plt.cm.Blues)
+    fig.colorbar(cax, ax=axs[1])
+    axs[1].set_xlabel("Predicted")
+    axs[1].set_ylabel("True")
+    axs[1].set_title("Confusion Matrix")
+    axs[1].set_xticks(np.arange(len(class_names)))
+    axs[1].set_yticks(np.arange(len(class_names)))
+    axs[1].set_xticklabels(class_names)
+    axs[1].set_yticklabels(class_names)
+
+    plt.setp(axs[1].get_xticklabels(), ha="center")
+
+    for (i, j), val in np.ndenumerate(cm):
+        color = "white" if cm[i, j] > cm.max() / 2 else "black"
+        axs[1].text(j, i, f'{val:.2f}', ha='center', va='center', color=color, fontsize=12, fontweight='bold')
+
+    plt.tight_layout()
     plt.savefig(output_path, format="svg", transparent=True)
     plt.close()
 

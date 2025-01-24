@@ -9,7 +9,7 @@ from ray.tune.experiment.trial import Trial
 from ray.air import session
 from mlp import MLP, train_mlp, predict_mlp
 from typing import Dict, Any, List
-from config import DEVICE, RAYTUNE_PLOT_PATH
+from config import DEVICE, RAYTUNE_PLOT_PATH, NUM_SAMPLES
 from plot import plot_ray_results
 
 
@@ -124,12 +124,12 @@ def get_hyperparameters(
         config = {
             "l1_lambda": tune.loguniform(1e-4, 1.2e-4),
             "l2_lambda": tune.loguniform(4.5e-5, 5.5e-5),
-            "hidden_dim1": tune.choice([32, 128]),
-            "hidden_dim2": tune.choice([64]),
+            "hidden_dim1": tune.choice([32, 64, 128]),
+            "hidden_dim2": tune.choice([32, 64]),
             "lr": tune.loguniform(2e-5, 2.8e-5),
             "weight_decay": tune.loguniform(4e-4, 6e-4),
             "num_epochs": tune.lograndint(3500, 4500),
-            "patience": tune.randint(100, 200),
+            "patience": tune.randint(100, 150),
             "dropout": tune.uniform(0.27, 0.28),
         }
 
@@ -150,7 +150,7 @@ def get_hyperparameters(
             ),
             resources_per_trial={"cpu": 1, "gpu": 1},
             config=config,
-            num_samples=30,
+            num_samples=NUM_SAMPLES,
             scheduler=scheduler,
             trial_dirname_creator=__trial_dirname_creator,
             verbose=1,

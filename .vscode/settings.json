@@ -1,7 +1,9 @@
 {
     "cSpell.words": [
+        "axvline",
         "barh",
         "beenthere",
+        "cmap",
         "cudnn",
         "dmarc",
         "Dmarc",
@@ -17,14 +19,23 @@
         "mimeole",
         "mktime",
         "msmail",
+        "ndenumerate",
         "optim",
         "parsedate",
         "randn",
         "relu",
+        "setp",
+        "sharey",
         "softfail",
         "texthtml",
         "trec",
+        "uwaterloo",
         "xlabel",
-        "ylabel"
+        "xticklabels",
+        "xticks",
+        "ylabel",
+        "ylim",
+        "yticklabels",
+        "yticks"
     ]
 }
