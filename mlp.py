@@ -117,7 +117,7 @@ def train_mlp(
     num_epochs: int = 10000,
     patience: int = 15,
     printInfo: bool = True,
-) -> float:
+) -> Tuple[float, list, list]:
     """
     Train the MLP model.
 
@@ -135,10 +135,14 @@ def train_mlp(
 
     Returns:
         float: Best validation loss.
+        list: Training losses.
+        list: Validation losses.
     """
     scaler = amp.GradScaler("cuda")
     best_val_loss = float("inf")
     patience_counter = 0
+    train_losses = []
+    val_losses = []
 
     try:
         for epoch in range(num_epochs):
@@ -162,6 +166,9 @@ def train_mlp(
                 val_loss = criterion(val_outputs, y_val)
                 val_loss += model.l1_penalty() + model.l2_penalty()
 
+            train_losses.append(loss.item())
+            val_losses.append(val_loss.item())
+
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 patience_counter = 0
@@ -183,8 +190,7 @@ def train_mlp(
                         f"{DELIMITER}"
                     )
                 torch.cuda.empty_cache()
-
-        return best_val_loss.item()
+        return best_val_loss.item(), train_losses, val_losses
     finally:
         torch.cuda.empty_cache()
 

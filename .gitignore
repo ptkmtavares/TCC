@@ -8,4 +8,5 @@ checkpoints/spam/*
 checkpoints/ham/*
 Old/*
 .vscode/*
+plots/*
 !checkpoints/phishing/checkpoint_epoch_5967.pth

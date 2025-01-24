@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset, random_split
 from mlp import MLP, predict_mlp, train_mlp, evaluate_mlp
 from gan import Generator, Discriminator, train_gan, generate_adversarial_examples
 from rayParam import get_hyperparameters
+from plot import plot_mlp_training, plot_gan_losses, plot_feature_distribution
 from config import (
     DEVICE,
     DELIMITER,
@@ -16,6 +17,10 @@ from config import (
     INDEX_PATH,
     EXAMPLE_PATH,
     CHECKPOINT_DIR,
+    MLP_ORIGINAL_PLOT_PATH,
+    MLP_AUGMENTED_PLOT_PATH,
+    GAN_PLOT_PATH,
+    FEATURE_DISTRIBUTION_PLOT_PATH,
 )
 
 BATCH_SIZE = 1024
@@ -64,6 +69,8 @@ def __load_and_preprocess_data() -> (
             f"{DELIMITER}"
         )
 
+        plot_feature_distribution(data, FEATURE_DISTRIBUTION_PLOT_PATH)
+
         data_tensor = torch.tensor(data, dtype=torch.float32, pin_memory=True)
         index_tensor = torch.tensor(index, dtype=torch.float32, pin_memory=True)
 
@@ -106,7 +113,7 @@ def __setup_gan(
 
     g_phishing = Generator(input_dim, input_dim).to(DEVICE)
     d_phishing = Discriminator(input_dim).to(DEVICE)
-    train_gan(
+    d_loss, g_loss = train_gan(
         g_phishing,
         d_phishing,
         phishing_loader,
@@ -115,6 +122,8 @@ def __setup_gan(
         checkpoint_dir=CHECKPOINT_DIR,
         num_epochs=NUM_EPOCHS_GAN,
     )
+    if d_loss and g_loss:
+        plot_gan_losses(d_loss, g_loss, GAN_PLOT_PATH)
 
     return g_phishing
 
@@ -242,7 +251,7 @@ def __train_and_evaluate_mlp(
             weight_decay=best_config["weight_decay"],
         )
 
-        train_mlp(
+        _, augmented_train_loss, augmented_val_loss = train_mlp(
             model_augmented,
             criterion,
             optimizer,
@@ -253,6 +262,11 @@ def __train_and_evaluate_mlp(
             num_epochs=best_config["num_epochs"],
             patience=best_config["patience"],
         )
+
+        plot_mlp_training(
+            augmented_train_loss, augmented_val_loss, MLP_AUGMENTED_PLOT_PATH
+        )
+
         accuracy_augmented = evaluate_mlp(model_augmented, X_test, y_test)
 
         logging.info(
@@ -277,7 +291,7 @@ def __train_and_evaluate_mlp(
             weight_decay=best_config["weight_decay"],
         )
 
-        train_mlp(
+        _, original_train_loss, original_val_loss = train_mlp(
             model_original,
             criterion,
             optimizer,
@@ -288,6 +302,11 @@ def __train_and_evaluate_mlp(
             num_epochs=best_config["num_epochs"],
             patience=best_config["patience"],
         )
+
+        plot_mlp_training(
+            original_train_loss, original_val_loss, MLP_ORIGINAL_PLOT_PATH
+        )
+
         accuracy_original = evaluate_mlp(model_original, X_test, y_test)
 
         return model_augmented, accuracy_augmented, accuracy_original

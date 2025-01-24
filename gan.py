@@ -6,6 +6,7 @@ import torch.optim as optim
 import time
 import os
 import logging
+from typing import Tuple
 from config import DELIMITER, LOG_FORMAT
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
@@ -179,7 +180,7 @@ def train_gan(
     n_critic: int = 1,
     device: str = "cpu",
     checkpoint_dir: str = "checkpoints",
-) -> None:
+) -> Tuple[list, list]:
     """
     Train the GAN model.
 
@@ -192,7 +193,13 @@ def train_gan(
         n_critic (int, optional): Number of critic iterations per generator iteration. Defaults to 1.
         device (str, optional): Device to train on. Defaults to "cpu".
         checkpoint_dir (str, optional): Directory to save checkpoints. Defaults to "checkpoints".
+        
+    Returns:
+        list: Discriminator losses.
+        list: Generator losses.
     """
+    d_losses = []
+    g_losses = []
     try:
         criterion = nn.BCEWithLogitsLoss()
         optimizer_G = optim.Adam(G.parameters(), lr=0.0002)
@@ -212,7 +219,7 @@ def train_gan(
                     f"\nCheckpoint epoch is greater than or equal to num_epochs. Returning...\n"
                     f"{DELIMITER}"
                 )
-                return
+                return [], []
             logging.info(
                 f"\nResuming training from epoch {start_epoch}\n" f"{DELIMITER}"
             )
@@ -253,6 +260,9 @@ def train_gan(
                     torch.cuda.empty_cache()
                     del noise, fake_data
 
+            d_losses.append(d_loss.item())
+            g_losses.append(g_loss.item())
+
             epoch_end_time = time.time()
             epoch_duration = epoch_end_time - epoch_start_time
             remaining_time = (num_epochs - (epoch + 1)) * epoch_duration
@@ -272,6 +282,7 @@ def train_gan(
 
     finally:
         torch.cuda.empty_cache()
+        return d_losses, g_losses
 
 
 def generate_adversarial_examples(

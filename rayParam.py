@@ -9,7 +9,8 @@ from ray.tune.experiment.trial import Trial
 from ray.air import session
 from mlp import MLP, train_mlp, predict_mlp
 from typing import Dict, Any, List
-from config import DEVICE
+from config import DEVICE, RAYTUNE_PLOT_PATH
+from plot import plot_ray_results
 
 
 def __train_mlp_tune(
@@ -59,7 +60,7 @@ def __train_mlp_tune(
             model.parameters(), lr=config["lr"], weight_decay=config["weight_decay"]
         )
 
-        val_loss = train_mlp(
+        val_loss, _, _ = train_mlp(
             model,
             criterion,
             optimizer,
@@ -113,7 +114,7 @@ def get_hyperparameters(
         train_labels (np.ndarray): Training labels.
         test_labels (np.ndarray): Test labels.
         example_data (List[List[int]]): Example data for evaluation.
-        example_labels (List[int]): Example labels for evaluation.
+        example_labels (List[int]]): Example labels for evaluation.
         config (str, optional): Configuration type. Defaults to None.
 
     Returns:
@@ -154,6 +155,7 @@ def get_hyperparameters(
             trial_dirname_creator=__trial_dirname_creator,
             verbose=1,
         )
+        plot_ray_results(analysis, RAYTUNE_PLOT_PATH)
     except Exception as e:
         logging.error(f"Error during hyperparameter tuning: {e}")
         raise

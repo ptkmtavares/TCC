@@ -8,156 +8,19 @@ import concurrent.futures
 from typing import List, Tuple, Dict, Union
 from receivedParser import ReceivedParser
 from dataOrganizer import main as organize_data
-from config import INDEX_PATH, LOG_FORMAT
+from config import (
+    INDEX_PATH,
+    LOG_FORMAT,
+    FEATURES,
+    HEADER_INFORMATION,
+    FEATURE_DISTRIBUTION_PLOT_PATH,
+)
+from plot import plot_feature_distribution
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
 parser = HeaderParser()
 receivedParser = ReceivedParser()
-
-FEATURES = [
-    "time_zone",
-    "date_date_received_diff",
-    "missing_importance",
-    "missing_x-mailman-version",
-    "missing_user-agent",
-    "missing_x-mailer",
-    "missing_list-unsubscribe",
-    "missing_mime-version",
-    "missing_references",
-    "missing_x-original-to",
-    "missing_domainkey-signature",
-    "missing_received-spf",
-    "missing_dmarc",
-    "str_content-encoding_empty",
-    "str_from_question",
-    "str_from_exclam",
-    "str_from_chevron",
-    "str_to_chevron",
-    "str_to_undisclosed",
-    "str_to_empty",
-    "str_message-ID_dollar",
-    "str_return-path_bounce",
-    "str_return-path_empty",
-    "str_reply-to_question",
-    "str_content-type_texthtml",
-    "str_precedence_list",
-    "str_received-SPF_bad",
-    "str_received-SPF_softfail",
-    "str_received-SPF_fail",
-    "str_dmarc_bad",
-    "str_dmarc_softfail",
-    "str_dmarc_fail",
-    "str_dkim_bad",
-    "str_dkim_softfail",
-    "str_dkim_fail",
-    "received_str_forged",
-    "email_match_from_reply-to",
-    "domain_val_message-id",
-    "domain_match_message-id_from",
-    "domain_match_message-id_return-path",
-    "domain_match_message-id_sender",
-    "domain_match_message-id_reply-to",
-    "domain_match_from_return-path",
-    "domain_match_message-id_from",
-    "domain_match_from_return-path",
-    "domain_match_message-id_return-path",
-    "domain_match_message-id_sender",
-    "domain_match_message-id_reply-to",
-    "domain_match_return-path_reply-to",
-    "domain_match_reply-to_to",
-    "domain_match_to_in-reply-to",
-    "domain_match_errors-to_message-id",
-    "domain_match_errors-to_from",
-    "domain_match_errors-to_sender",
-    "domain_match_errors-to_reply-to",
-    "domain_match_sender_from",
-    "domain_match_references_reply-to",
-    "domain_match_references_in-reply-to",
-    "domain_match_references_to",
-    "domain_match_from_reply-to",
-    "domain_match_to_from",
-    "domain_match_to_message-id",
-    "domain_match_to_received",
-    "domain_match_reply-to_received",
-    "domain_match_from_received",
-    "domain_match_return-path_received",
-]
-
-HEADER_INFORMATION = [
-    "label",
-    "received_hop_1",
-    "received_hop_2",
-    "received_hop_3",
-    "received_hop_4",
-    "received_hop_5",
-    "received_hop_6",
-    "received_hop_7",
-    "received_hop_8",
-    "received_hop_9",
-    "received_hop_10",
-    "received_hop_11",
-    "received_hop_12",
-    "received_hop_13",
-    "received_hop_14",
-    "received_hop_15",
-    "received_hop_16",
-    "from",
-    "date",
-    "hop_count",
-    "subject",
-    "message-id",
-    "to",
-    "content-type",
-    "mime-version",
-    "x-mailer",
-    "content-transfer-encoding",
-    "x-mimeole",
-    "x-priority",
-    "return-path",
-    "list-id",
-    "lines",
-    "x-virus-scanned",
-    "status",
-    "content-length",
-    "precedence",
-    "delivered-to",
-    "list-unsubscribe",
-    "list-subscribe",
-    "list-post",
-    "list-help",
-    "x-msmail-priority",
-    "x-spam-status",
-    "sender",
-    "errors-to",
-    "reply-to",
-    "x-beenthere",
-    "list-archive",
-    "x-mailman-version",
-    "x-miltered",
-    "x-uuid",
-    "x-virus-status",
-    "x-spam-level",
-    "x-spam-checker-version",
-    "references",
-    "user-agent",
-    "received-spf",
-    "in-reply-to",
-    "x-original-to",
-    "user-agent",
-    "arc-message-signature",
-    "arc-authentication-results",
-    "arc-seal",
-    "thread-index",
-    "cc",
-    "content-disposition",
-    "mailing-list",
-    "x-spam-check-by",
-    "domainkey-signature",
-    "dkim-signature",
-    "importance",
-    "x-mailing-list",
-]
 
 
 def __extract_emails(text: str) -> List[str]:
@@ -762,7 +625,9 @@ def get_example_test_set(
         index_path (str): The path to the index file.
 
     Returns:
-        Tuple[List[List[int]], List[int], List[str]]: The test set, labels, and email paths.
+        List[List[int]]: Test set.
+        List[int]: Test labels.
+        List[str]: Email paths.
     """
     with open(index_path, "r", encoding="latin_1") as f:
         lines = f.readlines()
@@ -792,6 +657,9 @@ def main() -> None:
     percent = 1.0
     train_set, labels = get_training_test_set(index_path, values, percent)
     logging.info(f"Training set size: {len(train_set)}, Labels size: {len(labels)}")
+
+    plot_feature_distribution(train_set, labels, FEATURE_DISTRIBUTION_PLOT_PATH)
+    logging.info(f"Feature distribution plot saved to {FEATURE_DISTRIBUTION_PLOT_PATH}")
 
 
 if __name__ == "__main__":
