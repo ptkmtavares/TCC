@@ -6,7 +6,9 @@ from config import FEATURES
 from pandas import DataFrame
 
 
-def plot_feature_distribution(ham_features: np.ndarray, phishing_features: np.ndarray, output_path: str) -> None:
+def plot_feature_distribution(
+    ham_features: np.ndarray, phishing_features: np.ndarray, output_path: str
+) -> None:
     """Plots the distribution of ham and phishing features and saves as an SVG file.
 
     Args:
@@ -24,11 +26,15 @@ def plot_feature_distribution(ham_features: np.ndarray, phishing_features: np.nd
 
     axs[0].barh(feature_names, ham_feature_counts, color="skyblue")
     axs[0].set_xlabel("Count")
-    axs[0].set_title(f"{'Augmented ' if total_ham == total_phishing else ''}Ham Feature Distribution (Total:{total_ham})")
+    axs[0].set_title(
+        f"{'Augmented ' if total_ham == total_phishing else ''}Ham Feature Distribution (Total:{total_ham})"
+    )
 
     axs[1].barh(feature_names, phishing_feature_counts, color="salmon")
     axs[1].set_xlabel("Count")
-    axs[1].set_title(f"{'Augmented ' if total_ham == total_phishing else ''}Phishing Feature Distribution (Total:{total_phishing})")
+    axs[1].set_title(
+        f"{'Augmented ' if total_ham == total_phishing else ''}Phishing Feature Distribution (Total:{total_phishing})"
+    )
 
     plt.tight_layout()
     plt.savefig(output_path, format="svg", transparent=True)
@@ -88,7 +94,10 @@ def plot_ray_results(analysis: ExperimentAnalysis, output_path: str) -> None:
 
 
 def plot_mlp_training(
-    train_losses: list, val_losses: list, cm: np.ndarray, output_path: str = "training_plot.svg"
+    train_losses: list,
+    val_losses: list,
+    cm: np.ndarray,
+    output_path: str = "training_plot.svg",
 ) -> None:
     """
     Plots the training and validation loss over epochs and saves the plot as an SVG file.
@@ -124,7 +133,16 @@ def plot_mlp_training(
 
     for (i, j), val in np.ndenumerate(cm):
         color = "white" if cm[i, j] > cm.max() / 2 else "black"
-        axs[1].text(j, i, f'{val:.2f}', ha='center', va='center', color=color, fontsize=12, fontweight='bold')
+        axs[1].text(
+            j,
+            i,
+            f"{val:.2f}",
+            ha="center",
+            va="center",
+            color=color,
+            fontsize=12,
+            fontweight="bold",
+        )
 
     plt.tight_layout()
     plt.savefig(output_path, format="svg", transparent=True)
