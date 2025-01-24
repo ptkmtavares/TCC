@@ -14,8 +14,8 @@ def plot_feature_distribution(ham_features: np.ndarray, phishing_features: np.nd
         spam_features (np.ndarray): The list of phishing feature arrays.
         output_path (str): The path to save the SVG file.
     """
-    ham_feature_counts = [sum(map(abs, feature)) for feature in zip(*ham_features)]
-    phishing_feature_counts = [sum(map(abs, feature)) for feature in zip(*phishing_features)]
+    ham_feature_counts = np.sum(np.abs(ham_features), axis=0)
+    phishing_feature_counts = np.sum(np.abs(phishing_features), axis=0)
     total_ham = len(ham_features)
     total_phishing = len(phishing_features)
     feature_names = FEATURES

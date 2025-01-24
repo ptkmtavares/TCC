@@ -335,7 +335,7 @@ def main() -> None:
         ham_data_original = train_set[train_labels.cpu().numpy() == 0]
         phishing_data_original = train_set[train_labels.cpu().numpy() == 1]
         plot_feature_distribution(
-            ham_data_original, phishing_data_original, FD_ORIGINAL_DATA_PLOT_PATH
+            ham_data_original.cpu().numpy(), phishing_data_original.cpu().numpy(), FD_ORIGINAL_DATA_PLOT_PATH
         )
 
         g_phishing = __setup_gan(train_set, train_labels, input_dim)
