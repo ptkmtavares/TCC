@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "barh",
         "beenthere",
         "cudnn",
         "dmarc",
@@ -22,6 +23,8 @@
         "relu",
         "softfail",
         "texthtml",
-        "trec"
+        "trec",
+        "xlabel",
+        "ylabel"
     ]
 }
