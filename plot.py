@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ray.tune.analysis import ExperimentAnalysis
 from typing import List
-from config import FEATURES
+from config import FEATURES, MLP_ORIGINAL_PLOT_PATH
 from pandas import DataFrame
 
 
@@ -27,13 +27,13 @@ def plot_feature_distribution(
     axs[0].barh(feature_names, ham_feature_counts, color="skyblue")
     axs[0].set_xlabel("Count")
     axs[0].set_title(
-        f"{'Augmented ' if total_ham == total_phishing else ''}Ham Feature Distribution (Total:{total_ham})"
+        f"{'Augmented ' if total_ham == total_phishing else 'Original '}Ham Feature Distribution (Total:{total_ham})"
     )
 
     axs[1].barh(feature_names, phishing_feature_counts, color="salmon")
     axs[1].set_xlabel("Count")
     axs[1].set_title(
-        f"{'Augmented ' if total_ham == total_phishing else ''}Phishing Feature Distribution (Total:{total_phishing})"
+        f"{'Augmented ' if total_ham == total_phishing else 'Original '}Phishing Feature Distribution (Total:{total_phishing})"
     )
 
     plt.tight_layout()
@@ -116,14 +116,18 @@ def plot_mlp_training(
     axs[0].set_xlabel("Epochs")
     axs[0].set_ylabel("Loss")
     axs[0].set_ylim(0.0, 0.8)
-    axs[0].set_title("Training and Validation Loss")
+    axs[0].set_title(
+        f"{'Original ' if MLP_ORIGINAL_PLOT_PATH == output_path else 'Augmented '}Training and Validation Loss"
+    )
     axs[0].legend()
 
     cax = axs[1].matshow(cm, cmap=plt.cm.Blues)
     fig.colorbar(cax, ax=axs[1])
     axs[1].set_xlabel("Predicted")
     axs[1].set_ylabel("True")
-    axs[1].set_title("Confusion Matrix")
+    axs[1].set_title(
+        f"{'Original ' if MLP_ORIGINAL_PLOT_PATH == output_path else 'Augmented '}Confusion Matrix"
+    )
     axs[1].set_xticks(np.arange(len(class_names)))
     axs[1].set_yticks(np.arange(len(class_names)))
     axs[1].set_xticklabels(class_names)
