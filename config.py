@@ -15,7 +15,7 @@ EXAMPLE_PATH = DATASET_DIR + "exampleIndex"
 
 DATA_DIR = DATASET_DIR + "data"
 SPAM_HAM_DATA_DIR = DATASET_DIR + "SpamHam/trec07p/data"
-SPAM_HAM_INDEX_PATH = DATASET_DIR +  "SpamHam/trec07p/full/index"
+SPAM_HAM_INDEX_PATH = DATASET_DIR + "SpamHam/trec07p/full/index"
 PHISHING_DIR = DATASET_DIR + "Phishing/TXTs"
 
 # Plot
@@ -27,7 +27,6 @@ RAYTUNE_PLOT_PATH = PLOT_DIR + "raytune_results.svg"
 FEATURE_DISTRIBUTION_PLOT_PATH = PLOT_DIR + "feature_distribution.svg"
 
 # Features e informações do cabeçalho
-
 FEATURES = [
     "time_zone",
     "date_comp_date_received",
@@ -89,7 +88,7 @@ FEATURES = [
     "domain_match_to_received",
     "domain_match_reply-to_received",
     "domain_match_from_received",
-    "domain_match_return-path_received"
+    "domain_match_return-path_received",
 ]
 
 HEADER_INFORMATION = [

@@ -193,7 +193,7 @@ def train_gan(
         n_critic (int, optional): Number of critic iterations per generator iteration. Defaults to 1.
         device (str, optional): Device to train on. Defaults to "cpu".
         checkpoint_dir (str, optional): Directory to save checkpoints. Defaults to "checkpoints".
-        
+
     Returns:
         list: Discriminator losses.
         list: Generator losses.
