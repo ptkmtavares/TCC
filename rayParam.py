@@ -124,8 +124,8 @@ def get_hyperparameters(
         config = {
             "l1_lambda": tune.loguniform(1e-4, 1.2e-4),
             "l2_lambda": tune.loguniform(4.5e-5, 5.5e-5),
-            "hidden_dim1": tune.choice([32, 64, 128]),
-            "hidden_dim2": tune.choice([32, 64]),
+            "hidden_dim1": tune.choice([32, 128]),
+            "hidden_dim2": tune.choice([64]),
             "lr": tune.loguniform(2e-5, 2.8e-5),
             "weight_decay": tune.loguniform(4e-4, 6e-4),
             "num_epochs": tune.lograndint(3500, 4500),

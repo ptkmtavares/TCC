@@ -52,7 +52,7 @@ def plot_ray_results(analysis: ExperimentAnalysis, output_path: str) -> None:
     df: DataFrame = analysis.results_df
     dropped_trials: List[str] = []
     for trial in analysis.trials:
-        if trial.last_result["accuracy"] < 0.82:
+        if trial.last_result["val_loss"] > 0.56:
             dropped_trials.append(trial.trial_id)
 
         config = trial.config
@@ -140,7 +140,7 @@ def plot_mlp_training(
         axs[1].text(
             j,
             i,
-            f"{val:.2f}",
+            f"{val}",
             ha="center",
             va="center",
             color=color,

@@ -8,7 +8,7 @@ DELIMITER = "=" * 75
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
 # Ray Tune
-NUM_SAMPLES = 1
+NUM_SAMPLES = 50
 
 # Caminhos
 DATASET_DIR = "Dataset/"
