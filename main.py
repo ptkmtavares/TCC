@@ -147,7 +147,7 @@ def __generate_and_augment_data(
     logging.info(f"\nGenerating adversarial examples...\n" f"{DELIMITER}")
     ham_data = train_set[train_labels.cpu().numpy() == 0]
     phishing_data = train_set[train_labels.cpu().numpy() == 1]
-    num_samples_phishing = len(ham_data) - len(phishing_data)
+    num_samples_phishing = abs(len(ham_data) - len(phishing_data))
 
     if num_samples_phishing <= 0:
         logging.warning(
@@ -264,11 +264,16 @@ def __train_and_evaluate_mlp(
 
         accuracy_augmented, cm_augmented = evaluate_mlp(model_augmented, X_test, y_test)
         logging.info(
-            f"\nConfusion matrix for MLP classifier:\n" f"{cm_augmented}\n" f"{DELIMITER}"
+            f"\nConfusion matrix for MLP classifier:\n"
+            f"{cm_augmented}\n"
+            f"{DELIMITER}"
         )
-        
+
         plot_mlp_training(
-            augmented_train_loss, augmented_val_loss, cm_augmented, MLP_AUGMENTED_PLOT_PATH
+            augmented_train_loss,
+            augmented_val_loss,
+            cm_augmented,
+            MLP_AUGMENTED_PLOT_PATH,
         )
 
         logging.info(
@@ -307,9 +312,11 @@ def __train_and_evaluate_mlp(
 
         accuracy_original, cm_original = evaluate_mlp(model_original, X_test, y_test)
         logging.info(
-            f"\nConfusion matrix for MLP classifier:\n" f"{cm_original}\n" f"{DELIMITER}"
+            f"\nConfusion matrix for MLP classifier:\n"
+            f"{cm_original}\n"
+            f"{DELIMITER}"
         )
-        
+
         plot_mlp_training(
             original_train_loss, original_val_loss, cm_original, MLP_ORIGINAL_PLOT_PATH
         )
@@ -335,7 +342,9 @@ def main() -> None:
         ham_data_original = train_set[train_labels.cpu().numpy() == 0]
         phishing_data_original = train_set[train_labels.cpu().numpy() == 1]
         plot_feature_distribution(
-            ham_data_original.cpu().numpy(), phishing_data_original.cpu().numpy(), FD_ORIGINAL_DATA_PLOT_PATH
+            ham_data_original.cpu().numpy(),
+            phishing_data_original.cpu().numpy(),
+            FD_ORIGINAL_DATA_PLOT_PATH,
         )
 
         g_phishing = __setup_gan(train_set, train_labels, input_dim)

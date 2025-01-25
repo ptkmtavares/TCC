@@ -37,7 +37,7 @@ def plot_feature_distribution(
     )
 
     plt.tight_layout(pad=3.0, w_pad=0.5)
-    plt.savefig(output_path, format="svg", transparent=True, bbox_inches='tight')
+    plt.savefig(output_path, format="svg", transparent=True, bbox_inches="tight")
     plt.close()
 
 
