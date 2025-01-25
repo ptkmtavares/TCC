@@ -22,7 +22,7 @@ def plot_feature_distribution(
     total_phishing = len(phishing_features)
     feature_names = FEATURES
 
-    _, axs = plt.subplots(1, 2, figsize=(20, 8), sharey=True)
+    _, axs = plt.subplots(1, 2, figsize=(20, 12), sharey=True)
 
     axs[0].barh(feature_names, ham_feature_counts, color="skyblue")
     axs[0].set_xlabel("Count")
@@ -36,8 +36,8 @@ def plot_feature_distribution(
         f"{'Augmented ' if total_ham == total_phishing else 'Original '}Phishing Feature Distribution (Total:{total_phishing})"
     )
 
-    plt.tight_layout()
-    plt.savefig(output_path, format="svg", transparent=True)
+    plt.tight_layout(pad=3.0, w_pad=0.5)
+    plt.savefig(output_path, format="svg", transparent=True, bbox_inches='tight')
     plt.close()
 
 
