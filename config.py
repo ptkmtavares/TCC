@@ -11,6 +11,8 @@ LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 NUM_SAMPLES = 50
 
 # Caminhos
+CACHE_DIR = "cache/"
+EMAIL_CACHE_PATH = CACHE_DIR + "email_features.pkl"
 DATASET_DIR = "Dataset/"
 CHECKPOINT_DIR = "checkpoints/phishing/"
 INDEX_PATH = DATASET_DIR + "index"

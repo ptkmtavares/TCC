@@ -5,6 +5,7 @@ import os
 import re
 import email.utils as emailUtils
 import random
+import pickle
 import concurrent.futures
 from typing import List, Tuple, Dict, Union
 from receivedParser import ReceivedParser
@@ -15,6 +16,8 @@ from config import (
     FEATURES,
     HEADER_INFORMATION,
     FD_ORIGINAL_DATA_PLOT_PATH,
+    CACHE_DIR,
+    EMAIL_CACHE_PATH,
 )
 from plot import plot_feature_distribution
 
@@ -22,6 +25,35 @@ logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
 parser = HeaderParser()
 receivedParser = ReceivedParser()
+
+
+def __load_cache() -> Dict[str, List[int]]:
+    """Loads the cache of email features from file.
+
+    Returns:
+        Dict[str, List[int]]: Dictionary with email features in cache.
+    """
+    try:
+        if os.path.exists(CACHE_DIR) and os.path.exists(EMAIL_CACHE_PATH):
+            with open(EMAIL_CACHE_PATH, "rb") as f:
+                return pickle.load(f)
+    except Exception as e:
+        logging.warning(f"Error while loading the cache file: {e}")
+    return {}
+
+
+def __save_cache(cache: Dict[str, List[int]]) -> None:
+    """Saves the cache of email features to file.
+
+    Args:
+        cache (Dict[str, List[int]]): Dictionary with email features to save.
+    """
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(EMAIL_CACHE_PATH, "wb") as f:
+            pickle.dump(cache, f)
+    except Exception as e:
+        logging.error(f"Error while saving the cache file: {e}")
 
 
 def __extract_emails(text: str) -> List[str]:
@@ -595,25 +627,40 @@ def get_training_test_set(
     if not os.path.exists(index_path):
         logging.info("Index file not found. Creating index using dataOrganizer...")
         organize_data()
+
+    email_cache = __load_cache()
+    cache_modified = False if email_cache else True
+
     with open(index_path, "r", encoding="latin_1") as f:
         lines = f.readlines()
+
     lines = [line.strip() for line in lines if line.split(" ")[0] in values]
     random.shuffle(lines)
     num_samples = int(len(lines) * percent)
     selected_lines = lines[:num_samples]
+
     train_set, labels = [], []
     label_dict = {"ham": 0, "spam": 1, "phishing": 1}
-    email_cache = {}
+
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [
             executor.submit(__process_email, line, email_cache, label_dict)
             for line in selected_lines
         ]
+
         for future in concurrent.futures.as_completed(futures):
-            features, label, _ = future.result()
+            features, label, email_path = future.result()
             if features is not None and label is not None:
                 train_set.append(features)
                 labels.append(label)
+                if email_path and email_path not in email_cache:
+                    email_cache[email_path] = features
+                    cache_modified = True
+
+    if cache_modified:
+        __save_cache(email_cache)
+        logging.info("Features cache updated.")
+
     train_set = np.array(train_set)
     labels = np.array(labels)
     return train_set, labels
