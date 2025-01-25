@@ -1,3 +1,0 @@
-{"rule":"MORFOLOGIK_RULE_EN_US","sentence":"^\\QAdd colorbar\\E$"}
-{"rule":"PUNCTUATION_PARAGRAPH_END","sentence":"^\\QCreate an MLP classifier\\E$"}
-{"rule":"PUNCTUATION_PARAGRAPH_END","sentence":"^\\QPreprocess the data by scaling the features\\E$"}
