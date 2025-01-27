@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from ray import tune
+from ray.tune import search
 from ray.tune.schedulers import ASHAScheduler
 from ray.tune.experiment.trial import Trial
 from ray.air import session
@@ -122,20 +123,35 @@ def get_hyperparameters(
     """
     if config == "phishing":
         config = {
-            "l1_lambda": tune.loguniform(1e-4, 1.2e-4),
-            "l2_lambda": tune.loguniform(4.5e-5, 5.5e-5),
-            "hidden_dim1": tune.choice([32, 128]),
-            "hidden_dim2": tune.choice([64]),
-            "lr": tune.loguniform(2e-5, 2.8e-5),
-            "weight_decay": tune.loguniform(4e-4, 6e-4),
-            "num_epochs": tune.lograndint(3500, 4500),
-            "patience": tune.randint(100, 150),
-            "dropout": tune.uniform(0.27, 0.28),
+            "l1_lambda": tune.loguniform(1e-5, 2e-4),
+            "l2_lambda": tune.loguniform(1e-5, 1e-4),
+            "hidden_dim1": tune.choice([64, 128]),
+            "hidden_dim2": tune.choice([32, 64]),
+            "lr": tune.loguniform(1e-5, 1e-4),
+            "weight_decay": tune.loguniform(1e-5, 1e-4),
+            "num_epochs": tune.lograndint(1000, 5000),
+            "patience": 50,
+            "dropout": tune.uniform(0.3, 0.5),
+        }
+    elif config == "spam":
+        config = {
+        "l1_lambda": tune.loguniform(1e-5, 1e-4),        # Reduzido para valores menores
+        "l2_lambda": tune.loguniform(1e-6, 1e-5),        # Reduzido para valores menores
+        "hidden_dim1": tune.choice([64, 128]),          # Foco em dimensões maiores
+        "hidden_dim2": tune.choice([32]),               # Foco em dimensões menores
+        "lr": tune.loguniform(1e-5, 5e-4),                  # Ajustado para taxas menores
+        "weight_decay": tune.loguniform(1e-5, 1e-4),     # Reduzido para valores menores
+        "num_epochs": tune.lograndint(1000, 3000),       # Reduzido para evitar overfitting
+        "patience": 50,                                     # Aumentado para maior estabilidade
+        "dropout": 0.27,                                 # Removido dropout
         }
 
     scheduler = ASHAScheduler(
-        metric="accuracy", mode="max", max_t=200, grace_period=20, reduction_factor=3
+        metric="accuracy", mode="max", max_t=200, grace_period=20, reduction_factor=3, brackets=3
     )
+    
+    search_alg = search.BasicVariantGenerator(max_concurrent=4)
+    
 
     try:
         analysis = tune.run(
@@ -152,6 +168,7 @@ def get_hyperparameters(
             config=config,
             num_samples=NUM_SAMPLES,
             scheduler=scheduler,
+            search_alg=search_alg,
             trial_dirname_creator=__trial_dirname_creator,
             verbose=1,
         )
@@ -160,4 +177,4 @@ def get_hyperparameters(
         logging.error(f"Error during hyperparameter tuning: {e}")
         raise
 
-    return analysis.get_best_config(metric="val_loss", mode="min")
+    return analysis.get_best_config(metric="accuracy", mode="max")

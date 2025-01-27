@@ -9,6 +9,8 @@ import logging
 from typing import Tuple
 from config import DELIMITER, LOG_FORMAT
 
+
+MOVING_AVERAGE_WINDOW = 15
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
 
@@ -24,11 +26,9 @@ class Generator(nn.Module):
         """
         super(Generator, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(input_dim, 256),
+            nn.Linear(input_dim, 128),
             nn.ReLU(),
-            nn.Linear(256, 512),
-            nn.ReLU(),
-            nn.Linear(512, 256),
+            nn.Linear(128, 256),
             nn.ReLU(),
             nn.Linear(256, output_dim),
         )
@@ -57,10 +57,10 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(input_dim, 256),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Dropout(0.3),
             nn.Linear(256, 128),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Dropout(0.3),
             nn.Linear(128, 1),
         )
@@ -180,6 +180,8 @@ def train_gan(
     n_critic: int = 1,
     device: str = "cpu",
     checkpoint_dir: str = "checkpoints",
+    lr_g: float = 0.0001,
+    lr_d: float = 0.0002,
 ) -> Tuple[list, list]:
     """
     Train the GAN model.
@@ -202,8 +204,8 @@ def train_gan(
     g_losses = []
     try:
         criterion = nn.BCEWithLogitsLoss()
-        optimizer_G = optim.Adam(G.parameters(), lr=0.0002)
-        optimizer_D = optim.Adam(D.parameters(), lr=0.00065)
+        optimizer_G = optim.Adam(G.parameters(), lr=lr_g)
+        optimizer_D = optim.Adam(D.parameters(), lr=lr_d)
         scaler_G = amp.GradScaler("cuda")
         scaler_D = amp.GradScaler("cuda")
 
@@ -224,6 +226,7 @@ def train_gan(
                 f"\nResuming training from epoch {start_epoch}\n" f"{DELIMITER}"
             )
         save_interval = (num_epochs - start_epoch) // 4
+        epoch_times = []
 
         for epoch in range(start_epoch, num_epochs):
             epoch_start_time = time.time()
@@ -265,17 +268,25 @@ def train_gan(
 
             epoch_end_time = time.time()
             epoch_duration = epoch_end_time - epoch_start_time
-            remaining_time = (num_epochs - (epoch + 1)) * epoch_duration
+            epoch_times.append(epoch_duration)
+            
+            if len(epoch_times) > MOVING_AVERAGE_WINDOW:
+                epoch_times.pop(0)
+            avg_epoch_time = sum(epoch_times) / len(epoch_times)
+            
+            remaining_epochs = num_epochs - (epoch + 1)
+            remaining_time = (remaining_epochs * avg_epoch_time) * 60
+
+            logging.info(
+                f"\nEpoch [{epoch + 1}/{num_epochs}]\n"
+                f"D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f}\n"
+                f"Time for this epoch: {epoch_duration:.2f} seconds\n"
+                f"Estimated remaining time: {remaining_time:.2f} seconds\n"
+                f"{DELIMITER}"
+            )
 
             if (epoch + 1) % save_interval == 0 or (epoch + 1) == num_epochs:
                 torch.cuda.empty_cache()
-                logging.info(
-                    f"\nEpoch [{epoch + 1}/{num_epochs}]\n"
-                    f"D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f}\n"
-                    f"Time for this epoch: {epoch_duration:.2f} seconds\n"
-                    f"Estimated remaining time: {remaining_time:.2f} seconds\n"
-                    f"{DELIMITER}"
-                )
                 __save_checkpoint(
                     G, D, optimizer_G, optimizer_D, epoch + 1, checkpoint_dir
                 )

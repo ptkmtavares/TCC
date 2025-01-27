@@ -1,39 +1,40 @@
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 from ray.tune.analysis import ExperimentAnalysis
 from typing import List
-from config import FEATURES, MLP_ORIGINAL_PLOT_PATH
+from config import FEATURES, MLP_ORIGINAL_PLOT_PATH, ONE_CLASS
 from pandas import DataFrame
 
+matplotlib.use('Agg')
 
 def plot_feature_distribution(
-    ham_features: np.ndarray, phishing_features: np.ndarray, output_path: str
+    ham_features: np.ndarray, phishing_spam_features: np.ndarray, output_path: str
 ) -> None:
     """Plots the distribution of ham and phishing features and saves as an SVG file.
 
     Args:
         ham_features (np.ndarray): The list of ham feature arrays.
-        spam_features (np.ndarray): The list of phishing feature arrays.
+        phishing_spam_features_features (np.ndarray): The list of phishing/spam feature arrays.
         output_path (str): The path to save the SVG file.
     """
     ham_feature_counts = np.sum(np.abs(ham_features), axis=0)
-    phishing_feature_counts = np.sum(np.abs(phishing_features), axis=0)
+    phishing_spam_feature_counts = np.sum(np.abs(phishing_spam_features), axis=0)
     total_ham = len(ham_features)
-    total_phishing = len(phishing_features)
+    total_phishing_spam = len(phishing_spam_features)
     feature_names = FEATURES
+    dataset_type = "Augmented " if total_ham == total_phishing_spam else "Original "
 
     _, axs = plt.subplots(1, 2, figsize=(20, 12), sharey=True)
 
     axs[0].barh(feature_names, ham_feature_counts, color="skyblue")
     axs[0].set_xlabel("Count")
-    axs[0].set_title(
-        f"{'Augmented ' if total_ham == total_phishing else 'Original '}Ham Feature Distribution (Total:{total_ham})"
-    )
+    axs[0].set_title(f"{dataset_type}Ham Feature Distribution (Total:{total_ham})")
 
-    axs[1].barh(feature_names, phishing_feature_counts, color="salmon")
+    axs[1].barh(feature_names, phishing_spam_feature_counts, color="salmon")
     axs[1].set_xlabel("Count")
     axs[1].set_title(
-        f"{'Augmented ' if total_ham == total_phishing else 'Original '}Phishing Feature Distribution (Total:{total_phishing})"
+        f"{dataset_type + ONE_CLASS.title()} Feature Distribution (Total:{total_phishing_spam})"
     )
 
     plt.tight_layout(pad=3.0, w_pad=0.5)
@@ -109,13 +110,13 @@ def plot_mlp_training(
         output_path (str, optional): Path to save the SVG file. Defaults to "training_plot.svg".
     """
     fig, axs = plt.subplots(1, 2, figsize=(20, 6))
-    class_names = ["Ham", "Phishing"]
+    class_names = ["Ham", ONE_CLASS.title()]
 
     axs[0].plot(train_losses, label="Training Loss")
     axs[0].plot(val_losses, label="Validation Loss")
     axs[0].set_xlabel("Epochs")
     axs[0].set_ylabel("Loss")
-    axs[0].set_ylim(0.0, 0.8)
+    axs[0].set_ylim(0.0, 0.1)
     axs[0].set_title(
         f"{'Original ' if MLP_ORIGINAL_PLOT_PATH == output_path else 'Augmented '}Training and Validation Loss"
     )

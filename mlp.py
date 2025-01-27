@@ -178,7 +178,12 @@ def train_mlp(
 
             if patience_counter >= patience:
                 if printInfo:
-                    logging.info(f"Early stopping at epoch {epoch + 1}")
+                    logging.info(
+                        f"Early stopping at epoch [{epoch + 1}/{num_epochs}]\n"
+                        f"Loss: {loss.item():.4f}\n"
+                        f"Validation Loss: {val_loss.item():.4f}\n"
+                        f"{DELIMITER}"
+                    )
                 break
 
             print_interval = num_epochs // 4

@@ -15,9 +15,11 @@ from config import (
     LOG_FORMAT,
     FEATURES,
     HEADER_INFORMATION,
-    FD_ORIGINAL_DATA_PLOT_PATH,
     CACHE_DIR,
     EMAIL_CACHE_PATH,
+    PLOT_DIR,
+    ONE_CLASS,
+    CLASS_PATH,
 )
 from plot import plot_feature_distribution
 
@@ -703,13 +705,14 @@ def main() -> None:
     """Main function to test the data extraction process."""
     logging.info("Starting data extraction process...")
     index_path = INDEX_PATH
-    values = ["ham", "phishing"]
-    percent = 1.0
-    train_set, labels = get_training_test_set(index_path, values, percent)
+    values = ["ham", ONE_CLASS]
+    train_set, labels = get_training_test_set(index_path, values, 1.0)
     logging.info(f"Training set size: {len(train_set)}, Labels size: {len(labels)}")
-
-    plot_feature_distribution(train_set, labels, FD_ORIGINAL_DATA_PLOT_PATH)
-    logging.info(f"Feature distribution plot saved to {FD_ORIGINAL_DATA_PLOT_PATH}")
+    fd_dataset_path = PLOT_DIR + "fd_dataset" + CLASS_PATH + ".svg"
+    plot_feature_distribution(
+        train_set[labels == 0], train_set[labels == 1], fd_dataset_path
+    )
+    logging.info(f"Feature distribution plot saved to {fd_dataset_path}")
 
 
 if __name__ == "__main__":

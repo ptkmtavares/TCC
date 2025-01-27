@@ -22,14 +22,48 @@ from config import (
     GAN_PLOT_PATH,
     FD_ORIGINAL_DATA_PLOT_PATH,
     FD_AUGMENTED_DATA_PLOT_PATH,
+    ONE_CLASS,
 )
 
-BATCH_SIZE = 1024
+BATCH_SIZE = 4096 if ONE_CLASS == "spam" else 1024
 TRAIN_SPLIT = 0.75
 NUM_EPOCHS_GAN = 5967
+LR_GAN = (
+    [0.000305, 0.0004] if ONE_CLASS == "spam" else [0.0002, 0.0004]
+)  # Taxa de aprendizado para o gerador e discriminador
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 torch.cuda.empty_cache()
+
+
+def __identify_minority_class(labels: np.ndarray) -> Tuple[int, int, int]:
+    """Identifica a classe minoritária e retorna informações relevantes.
+
+    Args:
+        labels (np.ndarray): Array com os rótulos dos dados
+
+    Returns:
+        Tuple[int, int, int]: Classe minoritária, quantidade de amostras necessárias,
+                             quantidade total de amostras da classe majoritária
+    """
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    class_counts = dict(zip(unique_labels, counts))
+
+    minority_class = min(class_counts.items(), key=lambda x: x[1])[0]
+    majority_class = max(class_counts.items(), key=lambda x: x[1])[0]
+
+    samples_needed = class_counts[majority_class] - class_counts[minority_class]
+
+    logging.info(
+        f"\nDistribuição das classes:\n"
+        f"Classe 0 (ham): {class_counts[0]} amostras\n"
+        f"Classe 1 ({ONE_CLASS}): {class_counts[1]} amostras\n"
+        f"Classe minoritária: {np.int32(minority_class)}\n"
+        f"Amostras necessárias para balanceamento: {samples_needed}\n"
+        f"{DELIMITER}"
+    )
+
+    return minority_class, samples_needed, class_counts[majority_class]
 
 
 def set_seed(seed: int) -> None:
@@ -60,12 +94,12 @@ def __load_and_preprocess_data() -> (
         logging.info(
             f"\n{DELIMITER}\n" f"Loading and preprocessing data...\n" f"{DELIMITER}"
         )
-        selected_data = ["ham", "phishing"]
+        selected_data = ["ham", ONE_CLASS]
         data, index = get_training_test_set(INDEX_PATH, selected_data, 1.0)
 
         sample_counts = np.bincount(index)
         logging.info(
-            f"\nPhishing samples: {sample_counts[1]}\n"
+            f"\n{ONE_CLASS.title()} samples: {sample_counts[1]}\n"
             f"Ham samples: {sample_counts[0]}\n"
             f"{DELIMITER}"
         )
@@ -89,84 +123,88 @@ def __load_and_preprocess_data() -> (
         torch.cuda.empty_cache()
 
 
-def __setup_gan(
-    train_set: torch.Tensor, train_labels: torch.Tensor, input_dim: int
-) -> Generator:
-    """Sets up and trains the GAN for phishing data.
-
-    Args:
-        train_set (torch.Tensor): The training set.
-        train_labels (torch.Tensor): The training labels.
-        input_dim (int): The input dimension.
-
-    Returns:
-        Generator: The trained generator model.
-    """
-    logging.info(f"\nTraining GAN for phishing...\n" f"{DELIMITER}")
-    phishing_data = train_set[train_labels.cpu().numpy() == 1]
-    phishing_labels = train_labels[train_labels.cpu().numpy() == 1]
-    phishing_dataset = TensorDataset(phishing_data.to(DEVICE), phishing_labels)
-    phishing_loader = DataLoader(
-        phishing_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
-    )
-
-    g_phishing = Generator(input_dim, input_dim).to(DEVICE)
-    d_phishing = Discriminator(input_dim).to(DEVICE)
-    d_loss, g_loss = train_gan(
-        g_phishing,
-        d_phishing,
-        phishing_loader,
-        input_dim,
-        device=DEVICE,
-        checkpoint_dir=CHECKPOINT_DIR,
-        num_epochs=NUM_EPOCHS_GAN,
-    )
-    if d_loss and g_loss:
-        plot_gan_losses(d_loss, g_loss, GAN_PLOT_PATH)
-
-    return g_phishing
-
-
-def __generate_and_augment_data(
-    g_phishing: Generator,
+def __setup_dynamic_gan(
     train_set: torch.Tensor,
     train_labels: torch.Tensor,
     input_dim: int,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Generates adversarial examples and augments the training data.
+    minority_class: int,
+) -> Generator:
+    """Configura e treina o GAN para a classe minoritária.
 
     Args:
-        g_phishing (Generator): The trained generator model.
-        train_set (torch.Tensor): The training set.
-        train_labels (torch.Tensor): The training labels.
-        input_dim (int): The input dimension.
+        train_set (torch.Tensor): Conjunto de treinamento
+        train_labels (torch.Tensor): Rótulos de treinamento
+        input_dim (int): Dimensão de entrada
+        minority_class (int): Classe minoritária identificada
 
     Returns:
-        Tuple[np.ndarray, np.ndarray]: The augmented training set and labels.
+        Generator: Modelo gerador treinado
     """
-    logging.info(f"\nGenerating adversarial examples...\n" f"{DELIMITER}")
-    ham_data = train_set[train_labels.cpu().numpy() == 0]
-    phishing_data = train_set[train_labels.cpu().numpy() == 1]
-    num_samples_phishing = abs(len(ham_data) - len(phishing_data))
+    class_name = "ham" if minority_class == 0 else ONE_CLASS
+    logging.info(f"\nTreinando GAN para {class_name}...\n{DELIMITER}")
 
-    if num_samples_phishing <= 0:
-        logging.warning(
-            f"\nNumber of phishing samples is greater than or equal to the number of ham samples. Defaulting to 1000...\n"
-            f"{DELIMITER}"
-        )
-        num_samples_phishing = 1000
-
-    generated_phishing = generate_adversarial_examples(
-        g_phishing, num_samples_phishing, input_dim, device=DEVICE
+    minority_data = train_set[train_labels.cpu().numpy() == minority_class]
+    minority_labels = train_labels[train_labels.cpu().numpy() == minority_class]
+    minority_dataset = TensorDataset(minority_data.to(DEVICE), minority_labels)
+    minority_loader = DataLoader(
+        minority_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
     )
+
+    generator = Generator(input_dim, input_dim).to(DEVICE)
+    discriminator = Discriminator(input_dim).to(DEVICE)
+
+    d_loss, g_loss = train_gan(
+        generator,
+        discriminator,
+        minority_loader,
+        input_dim,
+        device=DEVICE,
+        checkpoint_dir=CHECKPOINT_DIR + class_name + "/",
+        num_epochs=NUM_EPOCHS_GAN,
+        lr_g=LR_GAN[0],
+        lr_d=LR_GAN[1],
+    )
+
+    if d_loss and g_loss:
+        plot_gan_losses(d_loss, g_loss, GAN_PLOT_PATH)
+
+    return generator
+
+
+def __generate_and_augment_data(
+    generator: Generator,
+    train_set: torch.Tensor,
+    train_labels: torch.Tensor,
+    input_dim: int,
+    minority_class: int,
+    samples_needed: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Gera exemplos sintéticos e aumenta o conjunto de treinamento.
+
+    Args:
+        generator (Generator): Modelo gerador treinado
+        train_set (torch.Tensor): Conjunto de treinamento
+        train_labels (torch.Tensor): Rótulos de treinamento
+        input_dim (int): Dimensão de entrada
+        minority_class (int): Classe minoritária
+        samples_needed (int): Quantidade de amostras necessárias
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: Conjunto de treinamento aumentado e rótulos
+    """
+    class_name = "ham" if minority_class == 0 else ONE_CLASS
     logging.info(
-        f"\nGenerated phishing examples: {num_samples_phishing}\n" f"{DELIMITER}"
+        f"\nGerando {samples_needed} exemplos sintéticos de {class_name}...\n{DELIMITER}"
     )
 
-    logging.info(f"\nAugmenting the training set...\n" f"{DELIMITER}")
-    augmented_train_set = np.vstack([train_set.cpu().numpy(), generated_phishing])
+    generated_samples = generate_adversarial_examples(
+        generator, samples_needed, input_dim, device=DEVICE
+    )
+
+    logging.info(f"\nAumentando o conjunto de treinamento...\n{DELIMITER}")
+    augmented_train_set = np.vstack([train_set.cpu().numpy(), generated_samples])
     augmented_train_labels = np.hstack(
-        [train_labels.cpu().numpy(), np.full(num_samples_phishing, 1)]
+        [train_labels.cpu().numpy(), np.full(samples_needed, minority_class)]
     )
 
     return augmented_train_set, augmented_train_labels
@@ -205,8 +243,20 @@ def __train_and_evaluate_mlp(
             test_labels,
             example_data=example_data,
             example_labels=example_index,
-            config="phishing",
+            config=ONE_CLASS,
         )
+        num_epochs = 15000
+        # best_config = {
+        #    'l1_lambda': 0.00011,
+        #    'l2_lambda': 0.00005,
+        #    'hidden_dim1': 32,
+        #    'hidden_dim2': 16,
+        #    'lr': 0.0002,
+        #    'weight_decay': 0.0001,
+        #    'num_epochs': num_epochs,
+        #    'dropout': 0.0,
+        #    'patience': 80
+        # }
         print(DELIMITER)
         logging.info(
             f"\nBest hyperparameters found:\n"
@@ -339,25 +389,43 @@ def main() -> None:
         train_labels = index_tensor[train_dataset.indices]
         test_labels = index_tensor[test_dataset.indices]
 
-        ham_data_original = train_set[train_labels.cpu().numpy() == 0]
-        phishing_data_original = train_set[train_labels.cpu().numpy() == 1]
+        minority_class, samples_needed, _ = __identify_minority_class(
+            train_labels.cpu().numpy()
+        )
+
+        ham_data_original = train_set[train_labels.cpu().numpy() == 0].tolist()
+        phishing_spam_data_original = train_set[
+            train_labels.cpu().numpy() == 1
+        ].tolist()
+
         plot_feature_distribution(
-            ham_data_original.cpu().numpy(),
-            phishing_data_original.cpu().numpy(),
+            ham_data_original,
+            phishing_spam_data_original,
             FD_ORIGINAL_DATA_PLOT_PATH,
         )
 
-        g_phishing = __setup_gan(train_set, train_labels, input_dim)
+        generator = __setup_dynamic_gan(
+            train_set, train_labels, input_dim, minority_class
+        )
+
         augmented_train_set, augmented_train_labels = __generate_and_augment_data(
-            g_phishing, train_set, train_labels, input_dim
+            generator,
+            train_set,
+            train_labels,
+            input_dim,
+            minority_class,
+            samples_needed,
         )
 
         ham_data_augmented = augmented_train_set[augmented_train_labels == 0].tolist()
-        phishing_data_augmented = augmented_train_set[
+        phishing_spam_data_augmented = augmented_train_set[
             augmented_train_labels == 1
         ].tolist()
+
         plot_feature_distribution(
-            ham_data_augmented, phishing_data_augmented, FD_AUGMENTED_DATA_PLOT_PATH
+            ham_data_augmented,
+            phishing_spam_data_augmented,
+            FD_AUGMENTED_DATA_PLOT_PATH,
         )
 
         mlp_augmented, accuracy_augmented, accuracy_original = __train_and_evaluate_mlp(
@@ -385,7 +453,7 @@ def main() -> None:
             mlp_augmented, X_example_test
         )
         expected_labels_readable = [
-            "phishing" if label in [1] else "ham" for label in example_index
+            ONE_CLASS if label in [1] else "ham" for label in example_index
         ]
 
         for i, (_, prob) in enumerate(
@@ -394,7 +462,7 @@ def main() -> None:
             prob_phishing_spam = prob[1].item()
             prob_ham = prob[0].item()
             logging.info(
-                f"The email at path {email_paths[i]} is [ham: {prob_ham:.4f}, phishing: {prob_phishing_spam:.4f}] (expected: {expected_labels_readable[i]})"
+                f"The email at path {email_paths[i]} is [ham: {prob_ham:.4f}, {ONE_CLASS}: {prob_phishing_spam:.4f}] (expected: {expected_labels_readable[i]})"
             )
 
         print(DELIMITER)

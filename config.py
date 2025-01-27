@@ -1,5 +1,12 @@
 import torch
 
+# Dados selecionados
+ONE_CLASS = "spam"  # "spam" ou "phishing"
+assert ONE_CLASS in [
+    "spam",
+    "phishing",
+], f"ONE_CLASS deve ser 'spam' ou 'phishing'. Valor fornecido: {ONE_CLASS}"
+
 # PyTorch
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -8,13 +15,14 @@ DELIMITER = "=" * 75
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
 # Ray Tune
-NUM_SAMPLES = 50
+NUM_SAMPLES = 10
 
 # Caminhos
+CLASS_PATH = "_ham_" + ONE_CLASS
 CACHE_DIR = "cache/"
-EMAIL_CACHE_PATH = CACHE_DIR + "email_features.pkl"
+EMAIL_CACHE_PATH = CACHE_DIR + "email_features" + CLASS_PATH + ".pkl"
 DATASET_DIR = "Dataset/"
-CHECKPOINT_DIR = "checkpoints/phishing/"
+CHECKPOINT_DIR = "checkpoints/"
 INDEX_PATH = DATASET_DIR + "index"
 EXAMPLE_PATH = DATASET_DIR + "exampleIndex"
 
@@ -25,12 +33,12 @@ PHISHING_DIR = DATASET_DIR + "Phishing/TXTs"
 
 # Plots
 PLOT_DIR = "plots/"
-MLP_ORIGINAL_PLOT_PATH = PLOT_DIR + "mlp_original.svg"
-MLP_AUGMENTED_PLOT_PATH = PLOT_DIR + "mlp_augmented.svg"
-GAN_PLOT_PATH = PLOT_DIR + "gan.svg"
-RAYTUNE_PLOT_PATH = PLOT_DIR + "raytune_results.svg"
-FD_ORIGINAL_DATA_PLOT_PATH = PLOT_DIR + "fd_original.svg"
-FD_AUGMENTED_DATA_PLOT_PATH = PLOT_DIR + "fd_augmented.svg"
+MLP_ORIGINAL_PLOT_PATH = PLOT_DIR + "mlp_original" + CLASS_PATH + ".svg"
+MLP_AUGMENTED_PLOT_PATH = PLOT_DIR + "mlp_augmented" + CLASS_PATH + ".svg"
+GAN_PLOT_PATH = PLOT_DIR + "gan" + CLASS_PATH + ".svg"
+RAYTUNE_PLOT_PATH = PLOT_DIR + "raytune_results" + CLASS_PATH + ".svg"
+FD_ORIGINAL_DATA_PLOT_PATH = PLOT_DIR + "fd_original" + CLASS_PATH + ".svg"
+FD_AUGMENTED_DATA_PLOT_PATH = PLOT_DIR + "fd_augmented" + CLASS_PATH + ".svg"
 
 # Features e informações do cabeçalho
 FEATURES = [
