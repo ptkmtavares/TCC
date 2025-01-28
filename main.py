@@ -27,9 +27,9 @@ from config import (
 
 BATCH_SIZE = 4096 if ONE_CLASS == "spam" else 1024
 TRAIN_SPLIT = 0.75
-NUM_EPOCHS_GAN = 5967
+NUM_EPOCHS_GAN = 1000
 LR_GAN = (
-    [0.000305, 0.0004] if ONE_CLASS == "spam" else [0.0002, 0.0004]
+    [0.000305, 0.0004] if ONE_CLASS == "spam" else [0.0001, 0.0001]
 )  # Taxa de aprendizado para o gerador e discriminador
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
@@ -245,7 +245,6 @@ def __train_and_evaluate_mlp(
             example_labels=example_index,
             config=ONE_CLASS,
         )
-        num_epochs = 15000
         # best_config = {
         #    'l1_lambda': 0.00011,
         #    'l2_lambda': 0.00005,
@@ -281,7 +280,7 @@ def __train_and_evaluate_mlp(
         X_test = torch.tensor(test_set, dtype=torch.float32).to(DEVICE)
         y_test = torch.tensor(test_labels, dtype=torch.long).to(DEVICE)
 
-        input_dim = X_train_augmented.shape[1]
+        input_dim = augmented_train_set.shape[1]
         output_dim = 2
 
         model_augmented = MLP(
@@ -379,7 +378,7 @@ def __train_and_evaluate_mlp(
 def main() -> None:
     """Main function to execute the training and evaluation process."""
     try:
-        set_seed(42)
+        set_seed(23)
         train_dataset, test_dataset, data_tensor, index_tensor, input_dim = (
             __load_and_preprocess_data()
         )
@@ -405,7 +404,7 @@ def main() -> None:
         )
 
         generator = __setup_dynamic_gan(
-            train_set, train_labels, input_dim, minority_class
+            torch.cat([train_set, test_set]), torch.cat([train_labels, test_labels]), input_dim, minority_class
         )
 
         augmented_train_set, augmented_train_labels = __generate_and_augment_data(

@@ -1,7 +1,7 @@
 import torch
 
 # Dados selecionados
-ONE_CLASS = "spam"  # "spam" ou "phishing"
+ONE_CLASS = "phishing"  # "spam" ou "phishing"
 assert ONE_CLASS in [
     "spam",
     "phishing",
@@ -15,7 +15,7 @@ DELIMITER = "=" * 75
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
 # Ray Tune
-NUM_SAMPLES = 10
+NUM_SAMPLES = 50
 
 # Caminhos
 CLASS_PATH = "_ham_" + ONE_CLASS

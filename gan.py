@@ -10,72 +10,65 @@ from typing import Tuple
 from config import DELIMITER, LOG_FORMAT
 
 
-MOVING_AVERAGE_WINDOW = 15
+MOVING_AVERAGE_WINDOW = 100
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-
 class Generator(nn.Module):
-    """Generator model for GAN"""
-
-    def __init__(self, input_dim: int, output_dim: int) -> None:
-        """Initialize the generator model.
-
-        Args:
-            input_dim (int): Dimension of the input noise vector.
-            output_dim (int): Dimension of the output data.
-        """
+    def __init__(self, input_dim: int = 61, output_dim: int = None) -> None:
         super(Generator, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(input_dim, 128),
-            nn.ReLU(),
+            nn.LayerNorm(128),
+            nn.LeakyReLU(0.2),
             nn.Linear(128, 256),
-            nn.ReLU(),
-            nn.Linear(256, output_dim),
+            nn.LayerNorm(256),
+            nn.LeakyReLU(0.2),
+            nn.Linear(256, 512),
+            nn.LayerNorm(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, output_dim),
+            nn.Tanh()
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the generator model.
-
-        Args:
-            x (torch.Tensor): Input noise vector.
-
-        Returns:
-            torch.Tensor: Generated samples.
-        """
         return self.model(x)
-
 
 class Discriminator(nn.Module):
-    """Discriminator model for GAN"""
-
     def __init__(self, input_dim: int) -> None:
-        """Initialize the discriminator model.
-
-        Args:
-            input_dim (int): Dimension of the input data.
-        """
         super(Discriminator, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(input_dim, 256),
-            nn.LeakyReLU(),
-            nn.Dropout(0.3),
+            nn.Linear(input_dim, 512),
+            nn.LayerNorm(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 256),
+            nn.LayerNorm(256),
+            nn.LeakyReLU(0.2),
             nn.Linear(256, 128),
-            nn.LeakyReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(128, 1),
+            nn.LayerNorm(128),
+            nn.LeakyReLU(0.2),
+            nn.Linear(128, 1)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the discriminator model.
-
-        Args:
-            x (torch.Tensor): Input data.
-
-        Returns:
-            torch.Tensor: Output logits.
-        """
         return self.model(x)
 
+def compute_gradient_penalty(discriminator, real_samples, fake_samples, device):
+    """Calculates the gradient penalty loss for WGAN GP"""
+    alpha = torch.rand((real_samples.size(0), 1), device=device)
+    interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
+    d_interpolates = discriminator(interpolates)
+    
+    gradients = torch.autograd.grad(
+        outputs=d_interpolates,
+        inputs=interpolates,
+        grad_outputs=torch.ones_like(d_interpolates, device=device),
+        create_graph=True,
+        retain_graph=True,
+        only_inputs=True,
+    )[0]
+    
+    gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+    return gradient_penalty
 
 def __save_checkpoint(
     G: Generator,
@@ -175,93 +168,74 @@ def train_gan(
     G: Generator,
     D: Discriminator,
     train_loader: torch.utils.data.DataLoader,
-    input_dim: int,
+    input_dim,
     num_epochs: int = 1000,
-    n_critic: int = 1,
+    n_critic: int = 5,
     device: str = "cpu",
     checkpoint_dir: str = "checkpoints",
-    lr_g: float = 0.0001,
-    lr_d: float = 0.0002,
+    lr_g: float = 1e-4,
+    lr_d: float = 1e-4,
+    lambda_gp: float = 10,
 ) -> Tuple[list, list]:
-    """
-    Train the GAN model.
-
-    Args:
-        G (Generator): Generator model.
-        D (Discriminator): Discriminator model.
-        train_loader (torch.utils.data.DataLoader): DataLoader for training data.
-        input_dim (int): Dimension of the input noise vector.
-        num_epochs (int, optional): Number of epochs to train. Defaults to 1000.
-        n_critic (int, optional): Number of critic iterations per generator iteration. Defaults to 1.
-        device (str, optional): Device to train on. Defaults to "cpu".
-        checkpoint_dir (str, optional): Directory to save checkpoints. Defaults to "checkpoints".
-
-    Returns:
-        list: Discriminator losses.
-        list: Generator losses.
-    """
+    """Train the WGAN-GP model."""
+    
     d_losses = []
     g_losses = []
+    
     try:
-        criterion = nn.BCEWithLogitsLoss()
-        optimizer_G = optim.Adam(G.parameters(), lr=lr_g)
-        optimizer_D = optim.Adam(D.parameters(), lr=lr_d)
-        scaler_G = amp.GradScaler("cuda")
-        scaler_D = amp.GradScaler("cuda")
+        optimizer_G = optim.Adam(G.parameters(), lr=lr_g, betas=(0.0, 0.9))
+        optimizer_D = optim.Adam(D.parameters(), lr=lr_d, betas=(0.0, 0.9))
+        scaler_G = amp.GradScaler(enabled=device=="cuda")
+        scaler_D = amp.GradScaler(enabled=device=="cuda")
 
         start_epoch = 0
         latest_checkpoint = __get_latest_checkpoint(checkpoint_dir, num_epochs)
         if latest_checkpoint:
-            logging.info(f"Loading latest checkpoint: {latest_checkpoint}")
-            start_epoch = __load_checkpoint(
-                G, D, optimizer_G, optimizer_D, latest_checkpoint
-            )
+            start_epoch = __load_checkpoint(G, D, optimizer_G, optimizer_D, latest_checkpoint)
             if start_epoch >= num_epochs:
-                logging.info(
-                    f"\nCheckpoint epoch is greater than or equal to num_epochs. Returning...\n"
-                    f"{DELIMITER}"
-                )
                 return [], []
-            logging.info(
-                f"\nResuming training from epoch {start_epoch}\n" f"{DELIMITER}"
-            )
-        save_interval = (num_epochs - start_epoch) // 4
+                
+        save_interval = max(1, (num_epochs - start_epoch) // 4)
         epoch_times = []
 
         for epoch in range(start_epoch, num_epochs):
             epoch_start_time = time.time()
-
-            for real_data, _ in train_loader:
+            
+            for batch_idx, (real_data, _) in enumerate(train_loader):
                 real_data = real_data.to(device, non_blocking=True)
-                real_labels = torch.ones(real_data.size(0), 1, device=device) * 0.9
-                fake_labels = torch.zeros(real_data.size(0), 1, device=device) + 0.1
-
+                batch_size = real_data.size(0)
+                
                 for _ in range(n_critic):
                     optimizer_D.zero_grad(set_to_none=True)
-                    with amp.autocast("cuda"):
-                        noise = torch.randn(real_data.size(0), input_dim, device=device)
+                    
+                    with amp.autocast(device_type="cuda", enabled=device=="cuda"):
+                        noise = torch.randn(batch_size, input_dim, device=device)
                         fake_data = G(noise)
-                        real_loss = criterion(D(real_data), real_labels)
-                        fake_loss = criterion(D(fake_data.detach()), fake_labels)
-                        d_loss = real_loss + fake_loss
+                        
+                        real_validity = D(real_data)
+                        fake_validity = D(fake_data.detach())
+                        
+                        gradient_penalty = compute_gradient_penalty(D, real_data, fake_data, device)
+                        d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
 
                     scaler_D.scale(d_loss).backward()
                     scaler_D.step(optimizer_D)
                     scaler_D.update()
 
+                # Train Generator
                 optimizer_G.zero_grad(set_to_none=True)
-                with amp.autocast("cuda"):
-                    noise = torch.randn(real_data.size(0), input_dim, device=device)
+                
+                with amp.autocast(device_type="cuda", enabled=device=="cuda"):
                     fake_data = G(noise)
-                    g_loss = criterion(D(fake_data), real_labels)
+                    fake_validity = D(fake_data)
+                    g_loss = -torch.mean(fake_validity)
 
                 scaler_G.scale(g_loss).backward()
                 scaler_G.step(optimizer_G)
                 scaler_G.update()
 
-                if epoch % 5 == 0:
+                if batch_idx % 5 == 0:
                     torch.cuda.empty_cache()
-                    del noise, fake_data
 
             d_losses.append(d_loss.item())
             g_losses.append(g_loss.item())
@@ -273,23 +247,18 @@ def train_gan(
             if len(epoch_times) > MOVING_AVERAGE_WINDOW:
                 epoch_times.pop(0)
             avg_epoch_time = sum(epoch_times) / len(epoch_times)
-            
             remaining_epochs = num_epochs - (epoch + 1)
-            remaining_time = (remaining_epochs * avg_epoch_time) * 60
+            remaining_time = remaining_epochs * avg_epoch_time
 
             logging.info(
                 f"\nEpoch [{epoch + 1}/{num_epochs}]\n"
                 f"D Loss: {d_loss.item():.4f} | G Loss: {g_loss.item():.4f}\n"
-                f"Time for this epoch: {epoch_duration:.2f} seconds\n"
-                f"Estimated remaining time: {remaining_time:.2f} seconds\n"
+                f"Time for epoch: {epoch_duration:.2f}s | Est. remaining: {remaining_time:.2f}s\n"
                 f"{DELIMITER}"
             )
 
             if (epoch + 1) % save_interval == 0 or (epoch + 1) == num_epochs:
-                torch.cuda.empty_cache()
-                __save_checkpoint(
-                    G, D, optimizer_G, optimizer_D, epoch + 1, checkpoint_dir
-                )
+                __save_checkpoint(G, D, optimizer_G, optimizer_D, epoch + 1, checkpoint_dir)
 
     finally:
         torch.cuda.empty_cache()

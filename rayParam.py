@@ -43,14 +43,12 @@ def __train_mlp_tune(
         y_example = torch.tensor(example_labels, dtype=torch.long, device=DEVICE)
 
         input_dim = train_data.shape[1]
-        hidden_dim1 = config["hidden_dim1"]
-        hidden_dim2 = config["hidden_dim2"]
         output_dim = 2
 
         model = MLP(
             input_dim,
-            hidden_dim1,
-            hidden_dim2,
+            config["hidden_dim1"],
+            config["hidden_dim2"],
             output_dim,
             l1_lambda=config["l1_lambda"],
             l2_lambda=config["l2_lambda"],
@@ -61,7 +59,7 @@ def __train_mlp_tune(
             model.parameters(), lr=config["lr"], weight_decay=config["weight_decay"]
         )
 
-        val_loss, _, _ = train_mlp(
+        _, _, val_losses = train_mlp(
             model,
             criterion,
             optimizer,
@@ -73,6 +71,8 @@ def __train_mlp_tune(
             patience=config["patience"],
             printInfo=False,
         )
+        
+        val_loss = val_losses[-1]
 
         _, label_probabilities = predict_mlp(model, X_example)
 
@@ -135,23 +135,31 @@ def get_hyperparameters(
         }
     elif config == "spam":
         config = {
-        "l1_lambda": tune.loguniform(1e-5, 1e-4),        # Reduzido para valores menores
-        "l2_lambda": tune.loguniform(1e-6, 1e-5),        # Reduzido para valores menores
-        "hidden_dim1": tune.choice([64, 128]),          # Foco em dimensões maiores
-        "hidden_dim2": tune.choice([32]),               # Foco em dimensões menores
-        "lr": tune.loguniform(1e-5, 5e-4),                  # Ajustado para taxas menores
-        "weight_decay": tune.loguniform(1e-5, 1e-4),     # Reduzido para valores menores
-        "num_epochs": tune.lograndint(1000, 3000),       # Reduzido para evitar overfitting
-        "patience": 50,                                     # Aumentado para maior estabilidade
-        "dropout": 0.27,                                 # Removido dropout
+            "l1_lambda": tune.loguniform(1e-5, 1e-4),  # Reduzido para valores menores
+            "l2_lambda": tune.loguniform(1e-6, 1e-5),  # Reduzido para valores menores
+            "hidden_dim1": tune.choice([64, 128]),  # Foco em dimensões maiores
+            "hidden_dim2": tune.choice([32]),  # Foco em dimensões menores
+            "lr": tune.loguniform(1e-5, 5e-4),  # Ajustado para taxas menores
+            "weight_decay": tune.loguniform(
+                1e-5, 1e-4
+            ),  # Reduzido para valores menores
+            "num_epochs": tune.lograndint(
+                1000, 3000
+            ),  # Reduzido para evitar overfitting
+            "patience": 50,  # Aumentado para maior estabilidade
+            "dropout": 0.27,  # Removido dropout
         }
 
     scheduler = ASHAScheduler(
-        metric="accuracy", mode="max", max_t=200, grace_period=20, reduction_factor=3, brackets=3
+        metric="accuracy",
+        mode="max",
+        max_t=200,
+        grace_period=20,
+        reduction_factor=3,
+        brackets=3,
     )
-    
+
     search_alg = search.BasicVariantGenerator(max_concurrent=4)
-    
 
     try:
         analysis = tune.run(
@@ -177,4 +185,4 @@ def get_hyperparameters(
         logging.error(f"Error during hyperparameter tuning: {e}")
         raise
 
-    return analysis.get_best_config(metric="accuracy", mode="max")
+    return analysis.get_best_config(metric="val_loss", mode="min")
