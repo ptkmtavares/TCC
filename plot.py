@@ -116,7 +116,7 @@ def plot_mlp_training(
     axs[0].plot(val_losses, label="Validation Loss")
     axs[0].set_xlabel("Epochs")
     axs[0].set_ylabel("Loss")
-    axs[0].set_ylim(0.0, 0.1)
+    axs[0].set_ylim(0.0, 0.4)
     axs[0].set_title(
         f"{'Original ' if MLP_ORIGINAL_PLOT_PATH == output_path else 'Augmented '}Training and Validation Loss"
     )
@@ -168,6 +168,7 @@ def plot_gan_losses(
     plt.figure(figsize=(10, 5))
     plt.plot(d_losses, label="Discriminator Loss")
     plt.plot(g_losses, label="Generator Loss")
+    plt.axhline(y=0.0, color='r', linestyle='--', label='Ideal Convergence')
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
     plt.legend()

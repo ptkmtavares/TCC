@@ -15,7 +15,7 @@ DELIMITER = "=" * 75
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
 # Ray Tune
-NUM_SAMPLES = 50
+NUM_SAMPLES = 10
 
 # Caminhos
 CLASS_PATH = "_ham_" + ONE_CLASS

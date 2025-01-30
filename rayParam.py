@@ -129,8 +129,8 @@ def get_hyperparameters(
             "hidden_dim2": tune.choice([32, 64]),
             "lr": tune.loguniform(1e-5, 1e-4),
             "weight_decay": tune.loguniform(1e-5, 1e-4),
-            "num_epochs": tune.lograndint(1000, 5000),
-            "patience": 50,
+            "num_epochs": tune.lograndint(3000, 7000),
+            "patience": 150,
             "dropout": tune.uniform(0.3, 0.5),
         }
     elif config == "spam":

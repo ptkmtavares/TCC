@@ -25,27 +25,17 @@ from config import (
     ONE_CLASS,
 )
 
-BATCH_SIZE = 4096 if ONE_CLASS == "spam" else 1024
+BATCH_SIZE = 512 if ONE_CLASS == "spam" else 64
 TRAIN_SPLIT = 0.75
-NUM_EPOCHS_GAN = 1000
+NUM_EPOCHS_GAN = 1250
 LR_GAN = (
     [0.000305, 0.0004] if ONE_CLASS == "spam" else [0.0001, 0.0001]
 )  # Taxa de aprendizado para o gerador e discriminador
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 torch.cuda.empty_cache()
-
-
+    
 def __identify_minority_class(labels: np.ndarray) -> Tuple[int, int, int]:
-    """Identifica a classe minoritária e retorna informações relevantes.
-
-    Args:
-        labels (np.ndarray): Array com os rótulos dos dados
-
-    Returns:
-        Tuple[int, int, int]: Classe minoritária, quantidade de amostras necessárias,
-                             quantidade total de amostras da classe majoritária
-    """
     unique_labels, counts = np.unique(labels, return_counts=True)
     class_counts = dict(zip(unique_labels, counts))
 
@@ -67,11 +57,6 @@ def __identify_minority_class(labels: np.ndarray) -> Tuple[int, int, int]:
 
 
 def set_seed(seed: int) -> None:
-    """Sets the seed for reproducibility.
-
-    Args:
-        seed (int): The seed value.
-    """
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
@@ -84,12 +69,6 @@ def set_seed(seed: int) -> None:
 def __load_and_preprocess_data() -> (
     Tuple[TensorDataset, TensorDataset, torch.Tensor, torch.Tensor, int]
 ):
-    """Loads and preprocesses the data for training and testing.
-
-    Returns:
-        Tuple[TensorDataset, TensorDataset, torch.Tensor, torch.Tensor, int]:
-        The training dataset, test dataset, data tensor, index tensor, and input dimension.
-    """
     try:
         logging.info(
             f"\n{DELIMITER}\n" f"Loading and preprocessing data...\n" f"{DELIMITER}"
@@ -129,17 +108,6 @@ def __setup_dynamic_gan(
     input_dim: int,
     minority_class: int,
 ) -> Generator:
-    """Configura e treina o GAN para a classe minoritária.
-
-    Args:
-        train_set (torch.Tensor): Conjunto de treinamento
-        train_labels (torch.Tensor): Rótulos de treinamento
-        input_dim (int): Dimensão de entrada
-        minority_class (int): Classe minoritária identificada
-
-    Returns:
-        Generator: Modelo gerador treinado
-    """
     class_name = "ham" if minority_class == 0 else ONE_CLASS
     logging.info(f"\nTreinando GAN para {class_name}...\n{DELIMITER}")
 
@@ -150,14 +118,14 @@ def __setup_dynamic_gan(
         minority_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
     )
 
-    generator = Generator(input_dim, input_dim).to(DEVICE)
-    discriminator = Discriminator(input_dim).to(DEVICE)
+    generator = Generator(100, input_dim).to(DEVICE)
+    discriminator = Discriminator(input_dim * 3).to(DEVICE)
 
     d_loss, g_loss = train_gan(
         generator,
         discriminator,
         minority_loader,
-        input_dim,
+        100,
         device=DEVICE,
         checkpoint_dir=CHECKPOINT_DIR + class_name + "/",
         num_epochs=NUM_EPOCHS_GAN,
@@ -171,6 +139,8 @@ def __setup_dynamic_gan(
     return generator
 
 
+from c2st import perform_c2st
+
 def __generate_and_augment_data(
     generator: Generator,
     train_set: torch.Tensor,
@@ -179,26 +149,25 @@ def __generate_and_augment_data(
     minority_class: int,
     samples_needed: int,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Gera exemplos sintéticos e aumenta o conjunto de treinamento.
-
-    Args:
-        generator (Generator): Modelo gerador treinado
-        train_set (torch.Tensor): Conjunto de treinamento
-        train_labels (torch.Tensor): Rótulos de treinamento
-        input_dim (int): Dimensão de entrada
-        minority_class (int): Classe minoritária
-        samples_needed (int): Quantidade de amostras necessárias
-
-    Returns:
-        Tuple[np.ndarray, np.ndarray]: Conjunto de treinamento aumentado e rótulos
-    """
     class_name = "ham" if minority_class == 0 else ONE_CLASS
     logging.info(
         f"\nGerando {samples_needed} exemplos sintéticos de {class_name}...\n{DELIMITER}"
     )
 
     generated_samples = generate_adversarial_examples(
-        generator, samples_needed, input_dim, device=DEVICE
+        generator, samples_needed, 100, device=DEVICE
+    )
+
+    # Realizar C2ST
+    real_samples = train_set[train_labels == minority_class].cpu().numpy()
+    c2st_accuracy, p_value = perform_c2st(real_samples, generated_samples[:len(real_samples)], DEVICE)
+    
+    logging.info(
+        f"\nResultados do Classifier Two-Sample Test (C2ST):\n"
+        f"Acurácia do C2ST: {c2st_accuracy:.2f}%\n"
+        f"P-valor: {p_value:.4f}\n"
+        f"{'Os dados gerados são estatisticamente diferentes dos reais' if p_value < 0.05 else 'Os dados gerados são similares aos reais'}\n"
+        f"{DELIMITER}"
     )
 
     logging.info(f"\nAumentando o conjunto de treinamento...\n{DELIMITER}")
@@ -218,19 +187,6 @@ def __train_and_evaluate_mlp(
     test_set: np.ndarray,
     test_labels: np.ndarray,
 ) -> Tuple[MLP, float, float]:
-    """Trains and evaluates the MLP model with and without augmented data.
-
-    Args:
-        train_set (np.ndarray): The original training set.
-        train_labels (np.ndarray): The original training labels.
-        augmented_train_set (np.ndarray): The augmented training set.
-        augmented_train_labels (np.ndarray): The augmented training labels.
-        test_set (np.ndarray): The test set.
-        test_labels (np.ndarray): The test labels.
-
-    Returns:
-        Tuple[MLP, float, float]: The trained MLP model, accuracy with augmented data, and accuracy without augmented data.
-    """
     try:
         logging.info(
             f"\nTraining and evaluating the MLP with augmented data...\n" f"{DELIMITER}"
@@ -370,13 +326,12 @@ def __train_and_evaluate_mlp(
             original_train_loss, original_val_loss, cm_original, MLP_ORIGINAL_PLOT_PATH
         )
 
-        return model_augmented, accuracy_augmented, accuracy_original
+        return model_augmented, model_original, accuracy_augmented, accuracy_original
     finally:
         torch.cuda.empty_cache()
 
 
 def main() -> None:
-    """Main function to execute the training and evaluation process."""
     try:
         set_seed(23)
         train_dataset, test_dataset, data_tensor, index_tensor, input_dim = (
@@ -427,7 +382,7 @@ def main() -> None:
             FD_AUGMENTED_DATA_PLOT_PATH,
         )
 
-        mlp_augmented, accuracy_augmented, accuracy_original = __train_and_evaluate_mlp(
+        mlp_augmented, mlp_original, accuracy_augmented, accuracy_original = __train_and_evaluate_mlp(
             train_set.cpu().numpy(),
             train_labels.cpu().numpy(),
             augmented_train_set,
@@ -446,17 +401,34 @@ def main() -> None:
 
         logging.info("Testing with example test set...")
         example_data, example_index, email_paths = get_example_test_set(EXAMPLE_PATH)
+        
         X_example_test = torch.tensor(example_data, dtype=torch.float32).to(DEVICE)
 
+        logging.info("\nResultados com modelo aumentado:")
         predicted_example_label, label_probabilities = predict_mlp(
             mlp_augmented, X_example_test
         )
+        
         expected_labels_readable = [
             ONE_CLASS if label in [1] else "ham" for label in example_index
         ]
 
         for i, (_, prob) in enumerate(
             zip(predicted_example_label, label_probabilities)
+        ):
+            prob_phishing_spam = prob[1].item()
+            prob_ham = prob[0].item()
+            logging.info(
+                f"The email at path {email_paths[i]} is [ham: {prob_ham:.4f}, {ONE_CLASS}: {prob_phishing_spam:.4f}] (expected: {expected_labels_readable[i]})"
+            )
+
+        logging.info("\nResultados com modelo original:")
+        predicted_example_label_original, label_probabilities_original = predict_mlp(
+            mlp_original, X_example_test
+        )
+
+        for i, (_, prob) in enumerate(
+            zip(predicted_example_label_original, label_probabilities_original)
         ):
             prob_phishing_spam = prob[1].item()
             prob_ham = prob[0].item()
