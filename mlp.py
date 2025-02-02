@@ -313,16 +313,17 @@ def train_mlp(
             remaining_time = remaining_epochs * avg_epoch_time
 
             # if printInfo and (epoch + 1) % (num_epochs // 4) == 0:
-            logging.info(
-                f"\nEpoch [{epoch + 1}/{num_epochs}]\n"
-                f"Train Loss: {avg_train_loss:.4f}\n"
-                f"Val Loss: {avg_val_loss:.4f}\n"
-                f"Best Val Loss: {best_val_loss:.4f}\n"
-                f"Patience Counter: {patience_counter}/{patience}\n"
-                f"Time for epoch: {epoch_duration:.2f}s | Est. remaining: {remaining_time:.2f}s\n"
-                f"Learning rate: {optimizer.param_groups[0]['lr']:.2e}\n"
-                f"{DELIMITER}"
-            )
+            if printInfo:
+                logging.info(
+                    f"\nEpoch [{epoch + 1}/{num_epochs}]\n"
+                    f"Train Loss: {avg_train_loss:.4f}\n"
+                    f"Val Loss: {avg_val_loss:.4f}\n"
+                    f"Best Val Loss: {best_val_loss:.4f}\n"
+                    f"Patience Counter: {patience_counter}/{patience}\n"
+                    f"Time for epoch: {epoch_duration:.2f}s | Est. remaining: {remaining_time:.2f}s\n"
+                    f"Learning rate: {optimizer.param_groups[0]['lr']:.2e}\n"
+                    f"{DELIMITER}"
+                )
 
         return best_val_loss, train_losses, val_losses
     finally:
