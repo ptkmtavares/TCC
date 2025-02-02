@@ -85,6 +85,10 @@ def perform_c2st(
     Returns:
         Tuple[float, float]: Acurácia do teste e p-valor
     """
+    num_samples = min(len(real_data), len(generated_data))
+    real_data = real_data[:num_samples]
+    generated_data = generated_data[:num_samples]
+    
     X = np.vstack([real_data, generated_data])
     y = np.hstack([np.ones(len(real_data)), np.zeros(len(generated_data))])
 

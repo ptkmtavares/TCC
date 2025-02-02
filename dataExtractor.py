@@ -11,6 +11,7 @@ from typing import List, Tuple, Dict, Union
 from receivedParser import ReceivedParser
 from dataOrganizer import main as organize_data
 from config import (
+    EXAMPLE_PATH,
     INDEX_PATH,
     LOG_FORMAT,
     FEATURES,
@@ -614,7 +615,9 @@ def __process_email(
 
 
 def get_training_test_set(
-    index_path: str, values: List[str], percent: float
+    index_path: str = INDEX_PATH,
+    values: List[str] = ["ham", ONE_CLASS],
+    percent: float = 1.0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Generates training and test sets from the given index file.
 
@@ -669,7 +672,7 @@ def get_training_test_set(
 
 
 def get_example_test_set(
-    index_path: str,
+    index_path: str = EXAMPLE_PATH,
 ) -> Tuple[List[List[int]], List[int], List[str]]:
     """Generates an example test set from the given index file.
 

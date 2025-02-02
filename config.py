@@ -1,11 +1,33 @@
 import torch
+import multiprocessing
 
 # Dados selecionados
-ONE_CLASS = "phishing"  # "spam" ou "phishing"
+ONE_CLASS = "spam"  # "spam" ou "phishing"
 assert ONE_CLASS in [
     "spam",
     "phishing",
 ], f"ONE_CLASS deve ser 'spam' ou 'phishing'. Valor fornecido: {ONE_CLASS}"
+
+NUM_WORKERS = min(8, multiprocessing.cpu_count())
+
+# Configurações do modelo MLP e GAN
+GAN_BATCH_SIZE = 512 if ONE_CLASS == "spam" else 64
+MLP_AUGMENTED_BATCH_SIZE = 2048 if ONE_CLASS == "spam" else 1024
+MLP_ORIGINAL_BATCH_SIZE = 1024 if ONE_CLASS == "spam" else 512
+TRAIN_SPLIT = 0.75
+MOVING_AVERAGE_WINDOW = 100
+
+# GAN
+NUM_EPOCHS_GAN = 3000
+LR_GAN = [0.0002, 0.0002]
+LATENT_DIM = 512
+N_CRITIC = 5
+LAMBDA_GP = 10
+INIT_TEMPERATURE = 1.0
+MIN_TEMPERATURE = 0.1
+DECAY_FACTOR = 0.95
+WARMUP_EPOCHS = 5
+GEN_TEMPERATURE = 0.2
 
 # PyTorch
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -15,17 +37,19 @@ DELIMITER = "=" * 75
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
 # Ray Tune
-NUM_SAMPLES = 10
+NUM_SAMPLES = 20
 
 # Caminhos
+__class_name = "ham" if ONE_CLASS == "spam" else "phishing"
+CHECKPOINT_DIR = "checkpoints/" + __class_name + "/"
 CLASS_PATH = "_ham_" + ONE_CLASS
 CACHE_DIR = "cache/"
 EMAIL_CACHE_PATH = CACHE_DIR + "email_features" + CLASS_PATH + ".pkl"
+
+# Datasets
 DATASET_DIR = "Dataset/"
-CHECKPOINT_DIR = "checkpoints/"
 INDEX_PATH = DATASET_DIR + "index"
 EXAMPLE_PATH = DATASET_DIR + "exampleIndex"
-
 DATA_DIR = DATASET_DIR + "data"
 SPAM_HAM_DATA_DIR = DATASET_DIR + "SpamHam/trec07p/data"
 SPAM_HAM_INDEX_PATH = DATASET_DIR + "SpamHam/trec07p/full/index"
@@ -39,6 +63,8 @@ GAN_PLOT_PATH = PLOT_DIR + "gan" + CLASS_PATH + ".svg"
 RAYTUNE_PLOT_PATH = PLOT_DIR + "raytune_results" + CLASS_PATH + ".svg"
 FD_ORIGINAL_DATA_PLOT_PATH = PLOT_DIR + "fd_original" + CLASS_PATH + ".svg"
 FD_AUGMENTED_DATA_PLOT_PATH = PLOT_DIR + "fd_augmented" + CLASS_PATH + ".svg"
+LR_ORIGINAL_DATA_PLOT_PATH = PLOT_DIR + "lr_original" + CLASS_PATH + ".svg"
+LR_AUGMENTED_DATA_PLOT_PATH = PLOT_DIR + "lr_augmented" + CLASS_PATH + ".svg"
 
 # Features e informações do cabeçalho
 FEATURES = [

@@ -6,51 +6,78 @@ import time
 import os
 import logging
 from typing import Tuple
-from config import DELIMITER, LOG_FORMAT
-from c2st import perform_c2st
+from config import (
+    CHECKPOINT_DIR,
+    DECAY_FACTOR,
+    DELIMITER,
+    DEVICE,
+    FEATURES,
+    GEN_TEMPERATURE,
+    INIT_TEMPERATURE,
+    LAMBDA_GP,
+    LATENT_DIM,
+    LOG_FORMAT,
+    LR_GAN,
+    MIN_TEMPERATURE,
+    N_CRITIC,
+    NUM_EPOCHS_GAN,
+    WARMUP_EPOCHS,
+    MOVING_AVERAGE_WINDOW,
+)
 
-MOVING_AVERAGE_WINDOW = 100
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
 
+class ResidualBlock(nn.Module):
+    def __init__(self, in_dim, out_dim, use_ln=False):
+        super(ResidualBlock, self).__init__()
+        layers = []
+        if use_ln:
+            layers.append(nn.LayerNorm(in_dim))
+        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.Linear(in_dim, out_dim))
+        if use_ln:
+            layers.append(nn.LayerNorm(out_dim))
+        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.Linear(out_dim, out_dim))
+        self.main = nn.Sequential(*layers)
+        self.skip = nn.Linear(in_dim, out_dim, bias=False) if in_dim != out_dim else nn.Identity()
+    
+    def forward(self, x):
+        return self.main(x) + self.skip(x)
+
 class Generator(nn.Module):
-    def __init__(self, latent_dim, output_dim=61, num_classes=3):
+    def __init__(self, latent_dim=LATENT_DIM, output_dim=len(FEATURES), num_classes=3):
         super(Generator, self).__init__()
         self.output_dim = output_dim
         self.num_classes = num_classes
+        self.fc_in = nn.Linear(latent_dim, 512)
+        
+        self.res_block1 = ResidualBlock(512, 512, use_ln=True)
+        self.res_block2 = ResidualBlock(512, 512, use_ln=True)
+        
+        self.fc_out = nn.Linear(512, output_dim * num_classes)
 
-        self.model = nn.Sequential(
-            nn.Linear(latent_dim, 256),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(256, 512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, output_dim * num_classes),
-        )
-
-    def forward(self, z, temperature=1.0, hard=False):
-        batch_size = z.size(0)
-        logits = self.model(z)
-        logits = logits.view(batch_size, self.output_dim, self.num_classes)
+    def forward(self, z, temperature=INIT_TEMPERATURE, hard=False):
+        x = self.fc_in(z)
+        x = self.res_block1(x)
+        x = self.res_block2(x)
+        logits = self.fc_out(x).view(-1, self.output_dim, self.num_classes)
         return nn.functional.gumbel_softmax(logits, tau=temperature, hard=hard, dim=-1)
 
-
 class Discriminator(nn.Module):
-    def __init__(self, input_dim=61 * 3):
+    def __init__(self, input_dim=len(FEATURES)*3):
         super(Discriminator, self).__init__()
-        self.model = nn.Sequential(
-            nn.Linear(input_dim, 512),
-            nn.LeakyReLU(0.2),
-            nn.Dropout(0.3),
-            nn.Linear(512, 256),
-            nn.LeakyReLU(0.2),
-            nn.Dropout(0.3),
-            nn.Linear(256, 1),
-        )
+        self.fc_in = nn.Linear(input_dim, 256)
+        self.res_block1 = ResidualBlock(256, 256, use_ln=False)
+        self.res_block2 = ResidualBlock(256, 256, use_ln=False)
+        self.fc_out = nn.Linear(256, 1)
 
     def forward(self, x):
-        return self.model(x).view(-1)
+        x = self.fc_in(x)
+        x = self.res_block1(x)
+        x = self.res_block2(x)
+        return self.fc_out(x).view(-1)
 
 
 def __save_checkpoint(
@@ -59,30 +86,45 @@ def __save_checkpoint(
     optimizer_G: torch.optim.Optimizer,
     optimizer_D: torch.optim.Optimizer,
     epoch: int,
-    checkpoint_dir: str = "checkpoints",
+    best_generator_state: dict = None,
+    best_ctst_score: float = float("inf"),
+    d_losses: list = None,
+    g_losses: list = None,
+    checkpoint_dir: str = CHECKPOINT_DIR,
 ) -> None:
     """
-    Save the model checkpoint.
+    Salva o checkpoint com estados dos modelos e métricas importantes.
 
     Args:
-        G (Generator): Generator model.
-        D (Discriminator): Discriminator model.
-        optimizer_G (torch.optim.Optimizer): Optimizer for the generator.
-        optimizer_D (torch.optim.Optimizer): Optimizer for the discriminator.
-        epoch (int): Current epoch number.
-        checkpoint_dir (str, optional): Directory to save the checkpoint. Defaults to "checkpoints".
+        G (Generator): Modelo gerador
+        D (Discriminator): Modelo discriminador
+        optimizer_G (Optimizer): Otimizador do gerador
+        optimizer_D (Optimizer): Otimizador do discriminador
+        epoch (int): Época atual
+        best_generator_state (dict, optional): Melhor estado do gerador
+        best_ctst_score (float, optional): Melhor pontuação C2ST
+        d_losses (list, optional): Histórico de perdas do discriminador
+        g_losses (list, optional): Histórico de perdas do gerador
+        checkpoint_dir (str, optional): Diretório para salvar
     """
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
+    
+    checkpoint = {
+        "epoch": epoch,
+        "G_state_dict": G.state_dict(),
+        "D_state_dict": D.state_dict(),
+        "optimizer_G_state_dict": optimizer_G.state_dict(),
+        "optimizer_D_state_dict": optimizer_D.state_dict(),
+        "best_generator_state": best_generator_state,
+        "best_ctst_score": best_ctst_score,
+        "d_losses": d_losses,
+        "g_losses": g_losses
+    }
+    
     torch.save(
-        {
-            "epoch": epoch,
-            "G_state_dict": G.state_dict(),
-            "D_state_dict": D.state_dict(),
-            "optimizer_G_state_dict": optimizer_G.state_dict(),
-            "optimizer_D_state_dict": optimizer_D.state_dict(),
-        },
-        os.path.join(checkpoint_dir, f"checkpoint_epoch_{epoch}.pth"),
+        checkpoint,
+        os.path.join(checkpoint_dir, f"gan_checkpoint_epoch_{epoch}.pth"),
     )
 
 
@@ -91,31 +133,36 @@ def __load_checkpoint(
     D: Discriminator,
     optimizer_G: torch.optim.Optimizer,
     optimizer_D: torch.optim.Optimizer,
-    checkpoint_path: str,
-) -> int:
+    checkpoint_path: str = CHECKPOINT_DIR,
+) -> Tuple[int, dict, float, list, list]:
     """
-    Load the model checkpoint.
-
-    Args:
-        G (Generator): Generator model.
-        D (Discriminator): Discriminator model.
-        optimizer_G (torch.optim.Optimizer): Optimizer for the generator.
-        optimizer_D (torch.optim.Optimizer): Optimizer for the discriminator.
-        checkpoint_path (str): Path to the checkpoint file.
+    Carrega o checkpoint com todos os estados e métricas.
 
     Returns:
-        int: Epoch number from the loaded checkpoint.
+        Tuple[int, dict, float, list, list]: 
+            - Época
+            - Melhor estado do gerador
+            - Melhor pontuação C2ST
+            - Histórico de perdas do discriminador
+            - Histórico de perdas do gerador
     """
     checkpoint = torch.load(checkpoint_path, weights_only=True)
     G.load_state_dict(checkpoint["G_state_dict"])
     D.load_state_dict(checkpoint["D_state_dict"])
     optimizer_G.load_state_dict(checkpoint["optimizer_G_state_dict"])
     optimizer_D.load_state_dict(checkpoint["optimizer_D_state_dict"])
-    return checkpoint["epoch"]
+    
+    return (
+        checkpoint["epoch"],
+        checkpoint.get("best_generator_state", None),
+        checkpoint.get("best_ctst_score", float("inf")),
+        checkpoint.get("d_losses", []),
+        checkpoint.get("g_losses", [])
+    )
 
 
 def __get_latest_checkpoint(
-    checkpoint_dir: str = "checkpoints", num_epochs: int = 1000
+    checkpoint_dir: str = CHECKPOINT_DIR, num_epochs: int = NUM_EPOCHS_GAN
 ) -> str:
     """
     Get the latest checkpoint file.
@@ -128,7 +175,7 @@ def __get_latest_checkpoint(
         str: Path to the latest checkpoint file.
     """
     checkpoints = [
-        f for f in os.listdir(checkpoint_dir) if f.startswith("checkpoint_epoch_")
+        f for f in os.listdir(checkpoint_dir) if f.startswith("gan_checkpoint_epoch_")
     ]
     if not checkpoints:
         return None
@@ -147,13 +194,27 @@ def __get_latest_checkpoint(
     return os.path.join(checkpoint_dir, closest_checkpoint)
 
 
-def temperature_scheduling(epoch, num_epochs, initial_temp=1.0, min_temp=0.1):
-    progress = epoch / num_epochs
-    return min_temp + 0.5 * (initial_temp - min_temp) * (1 + np.cos(progress * np.pi))
+def temperature_scheduling(
+    epoch,
+    num_epochs=NUM_EPOCHS_GAN,
+    initial_temp=INIT_TEMPERATURE,
+    min_temp=MIN_TEMPERATURE,
+    decay_factor=DECAY_FACTOR,
+    warmup_epochs=WARMUP_EPOCHS
+):
+    if epoch < warmup_epochs:
+        return initial_temp
+
+    progress = (epoch - warmup_epochs) / (num_epochs - warmup_epochs)
+    cosine_decay = 0.5 * (1 + np.cos(progress * np.pi))
+    
+    temp = initial_temp * (decay_factor ** (epoch - warmup_epochs))
+    temp = max(temp * cosine_decay, min_temp)
+    
+    return temp
 
 
-def compute_gradient_penalty(D, real_samples, fake_samples, device):
-    """Calcula o gradient penalty para WGAN-GP"""
+def compute_gradient_penalty(D, real_samples, fake_samples, device=DEVICE):
     alpha = torch.rand((real_samples.size(0), 1), device=device)
     interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(
         True
@@ -179,16 +240,14 @@ def train_gan(
     G: Generator,
     D: Discriminator,
     train_loader: torch.utils.data.DataLoader,
-    input_dim: int,
-    num_epochs: int = 1000,
-    device: str = "cpu",
-    checkpoint_dir: str = "checkpoints",
-    n_critic: int = 5,
-    lambda_gp: float = 10.0,
-    lr_g: float = 1e-4,
-    lr_d: float = 1e-4,
-    initial_temperature: float = 1.0,
-    min_temperature: float = 0.1,
+    device: str = DEVICE,
+    checkpoint_dir: str = CHECKPOINT_DIR,
+    latent_dim: int = LATENT_DIM,
+    num_epochs: int = NUM_EPOCHS_GAN,
+    n_critic: int = N_CRITIC,
+    lambda_gp: float = LAMBDA_GP,
+    lr_g: float = LR_GAN[0],
+    lr_d: float = LR_GAN[1],
 ) -> Tuple[list, list]:
 
     best_generator_state = None
@@ -203,19 +262,23 @@ def train_gan(
         G = G.to(device)
         D = D.to(device)
 
-        optimizer_G = optim.Adam(G.parameters(), lr=lr_g, betas=(0.5, 0.999))
-        optimizer_D = optim.Adam(D.parameters(), lr=lr_d, betas=(0.5, 0.999))
+        optimizer_G = optim.Adam(G.parameters(), lr=lr_g, betas=(0.5, 0.9))
+        optimizer_D = optim.Adam(D.parameters(), lr=lr_d, betas=(0.5, 0.9))
 
-        criterion = nn.BCEWithLogitsLoss()
+        total_iterations = num_epochs * len(train_loader)
+        lambda_lr = lambda iteration: max(0.0, 1.0 - iteration / total_iterations)
+        scheduler_G = optim.lr_scheduler.LambdaLR(optimizer_G, lr_lambda=lambda_lr)
+        scheduler_D = optim.lr_scheduler.LambdaLR(optimizer_D, lr_lambda=lambda_lr)
+        
 
         start_epoch = 0
         latest_checkpoint = __get_latest_checkpoint(checkpoint_dir, num_epochs)
         if latest_checkpoint:
-            start_epoch = __load_checkpoint(
+            start_epoch, best_generator_state, best_ctst_score, d_losses, g_losses = __load_checkpoint(
                 G, D, optimizer_G, optimizer_D, latest_checkpoint
             )
             if start_epoch >= num_epochs:
-                return [], []
+                return d_losses, g_losses
 
         save_interval = max(1, (num_epochs - start_epoch) // 4)
         eval_interval = max(1, (num_epochs - start_epoch) // 50)
@@ -229,21 +292,9 @@ def train_gan(
             G.train()
             D.train()
 
-            # temperature = max(
-            #    initial_temperature * np.exp(-3e-3 * epoch),
-            #    min_temperature
-            # )
+            temperature = temperature_scheduling(epoch)
 
-            # temperature = max(min_temperature, initial_temperature - (initial_temperature - min_temperature) * epoch/num_epochs)
-
-            temperature = temperature_scheduling(
-                epoch,
-                num_epochs,
-                initial_temp=initial_temperature,
-                min_temp=min_temperature,
-            )
-
-            for i, real_data in enumerate(train_loader):
+            for _, real_data in enumerate(train_loader):
                 real_data = real_data[0].to(device)
                 batch_size = real_data.size(0)
 
@@ -256,7 +307,7 @@ def train_gan(
                 for _ in range(n_critic):
                     optimizer_D.zero_grad()
 
-                    z = torch.randn(batch_size, input_dim, device=device)
+                    z = torch.randn(batch_size, latent_dim, device=device)
                     fake = G(z, temperature=temperature, hard=True)
                     fake_samples = fake.view(batch_size, -1)
 
@@ -286,6 +337,9 @@ def train_gan(
 
                 g_loss.backward()
                 optimizer_G.step()
+                
+                scheduler_G.step()
+                scheduler_D.step()
 
                 epoch_d_losses.append(d_loss.item())
                 epoch_g_losses.append(g_loss.item())
@@ -317,7 +371,9 @@ def train_gan(
 
             if (epoch + 1) % save_interval == 0 or (epoch + 1) == num_epochs:
                 __save_checkpoint(
-                    G, D, optimizer_G, optimizer_D, epoch + 1, checkpoint_dir
+                    G, D, optimizer_G, optimizer_D, epoch + 1,
+                    best_generator_state, best_ctst_score,
+                    d_losses, g_losses, checkpoint_dir
                 )
 
             # if (epoch + 1) % eval_interval == 0 or (epoch + 1) == num_epochs:
@@ -350,13 +406,13 @@ def train_gan(
 def generate_adversarial_examples(
     G: Generator,
     num_samples: int,
-    input_dim: int,
-    device: str = "cpu",
-    temperature: float = 0.1,
+    latent_dim: int = LATENT_DIM,
+    device: str = DEVICE,
+    temperature: float = GEN_TEMPERATURE,
 ) -> np.ndarray:
     G.eval()
     with torch.no_grad():
-        z = torch.randn(num_samples, input_dim, device=device)
+        z = torch.randn(num_samples, latent_dim, device=device)
         samples = G(z, temperature=temperature, hard=True)
         samples = samples.argmax(dim=-1) - 1
         return samples.cpu().numpy()

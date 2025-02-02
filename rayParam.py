@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 from ray import tune
 from ray.tune import search
 from ray.tune.schedulers import ASHAScheduler
@@ -10,7 +11,14 @@ from ray.tune.experiment.trial import Trial
 from ray.air import session
 from mlp import MLP, train_mlp, predict_mlp
 from typing import Dict, Any, List
-from config import DEVICE, RAYTUNE_PLOT_PATH, NUM_SAMPLES
+from config import (
+    MLP_AUGMENTED_BATCH_SIZE,
+    MLP_ORIGINAL_BATCH_SIZE,
+    DEVICE,
+    ONE_CLASS,
+    RAYTUNE_PLOT_PATH,
+    NUM_SAMPLES,
+)
 from plot import plot_ray_results
 
 
@@ -35,54 +43,66 @@ def __train_mlp_tune(
         example_labels (torch.Tensor): Example labels for evaluation.
     """
     try:
-        X_train = torch.tensor(train_data, dtype=torch.float32, device=DEVICE)
-        y_train = torch.tensor(train_labels, dtype=torch.long, device=DEVICE)
-        X_test = torch.tensor(test_data, dtype=torch.float32, device=DEVICE)
-        y_test = torch.tensor(test_labels, dtype=torch.long, device=DEVICE)
+        train_dataset = TensorDataset(
+            torch.tensor(train_data, dtype=torch.float32).to(DEVICE),
+            torch.tensor(train_labels, dtype=torch.long).to(DEVICE),
+        )
+        test_dataset = TensorDataset(
+            torch.tensor(test_data, dtype=torch.float32).to(DEVICE),
+            torch.tensor(test_labels, dtype=torch.long).to(DEVICE),
+        )
+
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=MLP_AUGMENTED_BATCH_SIZE,
+            shuffle=True,
+            num_workers=0,
+        )
+        test_loader = DataLoader(
+            test_dataset,
+            batch_size=MLP_ORIGINAL_BATCH_SIZE,
+            shuffle=False,
+            num_workers=0,
+        )
+
         X_example = torch.tensor(example_data, dtype=torch.float32, device=DEVICE)
         y_example = torch.tensor(example_labels, dtype=torch.long, device=DEVICE)
 
-        input_dim = train_data.shape[1]
-        output_dim = 2
-
         model = MLP(
-            input_dim,
-            config["hidden_dim1"],
-            config["hidden_dim2"],
-            output_dim,
+            train_data.shape[1],
+            config["hidden_dim"],
+            output_dim=2,
             l1_lambda=config["l1_lambda"],
             l2_lambda=config["l2_lambda"],
             dropout=config["dropout"],
         ).to(DEVICE)
+
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(
             model.parameters(), lr=config["lr"], weight_decay=config["weight_decay"]
         )
 
         _, _, val_losses = train_mlp(
-            model,
-            criterion,
-            optimizer,
-            X_train,
-            y_train,
-            X_test,
-            y_test,
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            train_loader=train_loader,
+            val_loader=test_loader,
             num_epochs=config["num_epochs"],
             patience=config["patience"],
             printInfo=False,
         )
-        
+
         val_loss = val_losses[-1]
 
         _, label_probabilities = predict_mlp(model, X_example)
-
         correct_probabilities = label_probabilities[range(len(y_example)), y_example]
         accuracy = correct_probabilities.mean().item()
 
         session.report({"accuracy": accuracy, "val_loss": val_loss})
 
     finally:
-        del model, X_train, y_train, X_test, y_test, X_example, y_example
+        del model, X_example, y_example
         torch.cuda.empty_cache()
 
 
@@ -105,7 +125,7 @@ def get_hyperparameters(
     test_labels: np.ndarray,
     example_data: List[List[int]],
     example_labels: List[int],
-    config: str = None,
+    config: str = ONE_CLASS,
 ) -> Dict[str, Any]:
     """Get hyperparameters for tuning.
 
@@ -125,29 +145,23 @@ def get_hyperparameters(
         config = {
             "l1_lambda": tune.loguniform(1e-5, 2e-4),
             "l2_lambda": tune.loguniform(1e-5, 1e-4),
-            "hidden_dim1": tune.choice([64, 128]),
-            "hidden_dim2": tune.choice([32, 64]),
+            "hidden_dim": tune.choice([32, 64]),
             "lr": tune.loguniform(1e-5, 1e-4),
             "weight_decay": tune.loguniform(1e-5, 1e-4),
-            "num_epochs": tune.lograndint(3000, 7000),
-            "patience": 150,
+            "num_epochs": tune.lograndint(100, 500),
+            "patience": 20,
             "dropout": tune.uniform(0.3, 0.5),
         }
     elif config == "spam":
         config = {
-            "l1_lambda": tune.loguniform(1e-5, 1e-4),  # Reduzido para valores menores
-            "l2_lambda": tune.loguniform(1e-6, 1e-5),  # Reduzido para valores menores
-            "hidden_dim1": tune.choice([64, 128]),  # Foco em dimensões maiores
-            "hidden_dim2": tune.choice([32]),  # Foco em dimensões menores
-            "lr": tune.loguniform(1e-5, 5e-4),  # Ajustado para taxas menores
-            "weight_decay": tune.loguniform(
-                1e-5, 1e-4
-            ),  # Reduzido para valores menores
-            "num_epochs": tune.lograndint(
-                1000, 3000
-            ),  # Reduzido para evitar overfitting
-            "patience": 50,  # Aumentado para maior estabilidade
-            "dropout": 0.27,  # Removido dropout
+            "l1_lambda": tune.loguniform(1e-5, 1e-4),
+            "l2_lambda": tune.loguniform(1e-6, 1e-5),
+            "hidden_dim": tune.choice([256, 512]),
+            "lr": tune.loguniform(1e-5, 5e-4),
+            "weight_decay": tune.loguniform(1e-5, 1e-4),
+            "num_epochs": tune.lograndint(100, 500),
+            "patience": 50,
+            "dropout": 0.27,
         }
 
     scheduler = ASHAScheduler(
