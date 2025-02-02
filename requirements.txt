@@ -1,6 +1,4 @@
 matplotlib==3.10.0
 numpy==2.2.2
-pandas==2.2.3
 ray==2.41.0
-scikit_learn==1.6.1
 torch==2.5.1

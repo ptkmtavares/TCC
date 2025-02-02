@@ -11,7 +11,6 @@ from config import (
     PLOT_DIR,
     RAYTUNE_PLOT_PATH,
 )
-from pandas import DataFrame
 
 matplotlib.use("Agg")
 
@@ -79,7 +78,7 @@ def plot_ray_results(
         output_path (str): The path to save the SVG file.
     """
     best_trial = analysis.get_best_trial("val_loss", "min", "last")
-    df: DataFrame = analysis.results_df
+    df = analysis.results_df
     dropped_trials: List[str] = []
     for trial in analysis.trials:
         if trial.last_result["val_loss"] > 0.56:

@@ -1,12 +1,10 @@
 import numpy as np
-from sklearn.metrics import roc_auc_score
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader
 from typing import Tuple
-import logging
+
 
 class C2STClassifier(nn.Module):
     def __init__(self, input_dim: int):
@@ -25,11 +23,9 @@ class C2STClassifier(nn.Module):
     def forward(self, x):
         return self.network(x)
 
+
 def calculate_pvalue_permutation(
-    predicted_probs: np.ndarray,
-    true_labels: np.ndarray,
-    n_permutations: int = 1000,
-    metric: str = 'accuracy'
+    predicted_probs: np.ndarray, true_labels: np.ndarray, n_permutations: int = 1000
 ) -> float:
     """
     Calcula o p-valor usando teste de permutação.
@@ -38,30 +34,45 @@ def calculate_pvalue_permutation(
         predicted_probs (np.ndarray): Probabilidades preditas pelo modelo
         true_labels (np.ndarray): Labels verdadeiros
         n_permutations (int): Número de permutações para o teste
-        metric (str): Métrica de avaliação ('accuracy' ou 'auc')
 
     Returns:
         float: P-valor calculado
     """
-    if metric == 'accuracy':
-        original_stat = np.mean((predicted_probs > 0.5) == true_labels)
-    elif metric == 'auc':
-        original_stat = roc_auc_score(true_labels, predicted_probs)
-    else:
-        raise ValueError("Métrica não suportada. Use 'accuracy' ou 'auc'.")
 
+    original_stat = np.mean((predicted_probs > 0.5) == true_labels)
     perm_stats = np.zeros(n_permutations)
-    
+
     for i in range(n_permutations):
         perm_labels = np.random.permutation(true_labels)
-        if metric == 'accuracy':
-            perm_stats[i] = np.mean((predicted_probs > 0.5) == perm_labels)
-        elif metric == 'auc':
-            perm_stats[i] = roc_auc_score(perm_labels, predicted_probs)
-    
+        perm_stats[i] = np.mean((predicted_probs > 0.5) == perm_labels)
+
     p_value = np.mean(perm_stats >= original_stat)
-    
+
     return p_value
+
+
+def train_test_split(
+    X: np.ndarray, y: np.ndarray, test_size: float = 0.2, random_state: int = 42
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Divide os dados em conjuntos de treino e teste.
+
+    Args:
+        X (np.ndarray): Dados de entrada
+        y (np.ndarray): Labels
+        test_size (float): Proporção do conjunto de teste
+        random_state (int): Semente para reprodutibilidade
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: Conjuntos de treino e teste
+    """
+    np.random.seed(random_state)
+    indices = np.random.permutation(len(X))
+    test_size = int(len(X) * test_size)
+    test_indices = indices[:test_size]
+    train_indices = indices[test_size:]
+    return X[train_indices], X[test_indices], y[train_indices], y[test_indices]
+
 
 def perform_c2st(
     real_data: np.ndarray,
@@ -69,7 +80,6 @@ def perform_c2st(
     device: torch.device,
     batch_size: int = 256,
     num_epochs: int = 100,
-    metric: str = 'accuracy'
 ) -> Tuple[float, float]:
     """
     Realiza o Classifier Two-Sample Test (C2ST) nos dados reais e gerados.
@@ -80,7 +90,6 @@ def perform_c2st(
         device (torch.device): Dispositivo para processamento
         batch_size (int, optional): Tamanho do batch. Defaults to 64.
         num_epochs (int, optional): Número de épocas. Defaults to 100.
-        metric (str, optional): Métrica de avaliação ('accuracy' ou 'auc'). Defaults to 'accuracy'.
 
     Returns:
         Tuple[float, float]: Acurácia do teste e p-valor
@@ -88,7 +97,7 @@ def perform_c2st(
     num_samples = min(len(real_data), len(generated_data))
     real_data = real_data[:num_samples]
     generated_data = generated_data[:num_samples]
-    
+
     X = np.vstack([real_data, generated_data])
     y = np.hstack([np.ones(len(real_data)), np.zeros(len(generated_data))])
 
@@ -122,14 +131,9 @@ def perform_c2st(
         y_pred = model(X_test)
         predicted_probs = y_pred.cpu().numpy().flatten()
         true_labels = y_test.cpu().numpy().flatten()
-        
-        if metric == 'accuracy':
-            accuracy = np.mean((predicted_probs > 0.5) == true_labels) * 100
-        elif metric == 'auc':
-            accuracy = roc_auc_score(true_labels, predicted_probs) * 100
-        else:
-            raise ValueError("Métrica não suportada. Use 'accuracy' ou 'auc'.")
 
-        p_value = calculate_pvalue_permutation(predicted_probs, true_labels, metric=metric)
+        accuracy = np.mean((predicted_probs > 0.5) == true_labels) * 100
+
+        p_value = calculate_pvalue_permutation(predicted_probs, true_labels)
 
     return accuracy, p_value
