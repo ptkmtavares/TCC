@@ -6,7 +6,12 @@ import torch.optim as optim
 import logging
 from typing import Tuple
 from dataExtractor import get_example_test_set, get_training_test_set
-from torch.utils.data import DataLoader, TensorDataset, random_split, WeightedRandomSampler
+from torch.utils.data import (
+    DataLoader,
+    TensorDataset,
+    random_split,
+    WeightedRandomSampler,
+)
 from mlp import MLP, predict_mlp, train_mlp, evaluate_mlp
 from gan import Generator, Discriminator, train_gan, generate_adversarial_examples
 from rayParam import get_hyperparameters
@@ -40,13 +45,14 @@ logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 torch.cuda.empty_cache()
 os.environ["NUMEXPR_MAX_THREADS"] = "8"
 
+
 def check_class_distribution(dataloader, name=""):
     """Verifica a distribuição das classes em um dataloader"""
     class_counts = {0.0: 0, 1.0: 0}
     for _, labels in dataloader:
         for label in labels:
             class_counts[label.item()] += 1
-            
+
     total = sum(class_counts.values())
     logging.info(
         f"\nDistribuição de classes no {name}:"
@@ -56,6 +62,7 @@ def check_class_distribution(dataloader, name=""):
         f"\n{DELIMITER}"
     )
 
+
 def create_dataloader(dataset, batch_size):
     labels = [y.item() for _, y in dataset]
 
@@ -64,14 +71,14 @@ def create_dataloader(dataset, batch_size):
 
     class_weights = total_samples / (class_counts.float() * len(class_counts))
 
-    sample_weights = torch.tensor([class_weights[int(label)].item() for label in labels])
-    
-    sampler = WeightedRandomSampler(
-        weights=sample_weights,
-        num_samples=len(sample_weights),
-        replacement=True
+    sample_weights = torch.tensor(
+        [class_weights[int(label)].item() for label in labels]
     )
-    
+
+    sampler = WeightedRandomSampler(
+        weights=sample_weights, num_samples=len(sample_weights), replacement=True
+    )
+
     return DataLoader(
         dataset,
         batch_size=batch_size,
@@ -81,10 +88,11 @@ def create_dataloader(dataset, batch_size):
         pin_memory=True,
     )
 
+
 def create_deterministic_dataloader(dataset, batch_size, shuffle_seed=23):
     """
     Cria um DataLoader com amostragem ponderada para lidar com classes desequilibradas.
-    
+
     Args:
         dataset: Dataset do PyTorch
         batch_size: Tamanho do batch
@@ -97,18 +105,20 @@ def create_deterministic_dataloader(dataset, batch_size, shuffle_seed=23):
 
     class_weights = total_samples / (class_counts.float() * len(class_counts))
 
-    sample_weights = torch.tensor([class_weights[int(label)].item() for label in labels])
+    sample_weights = torch.tensor(
+        [class_weights[int(label)].item() for label in labels]
+    )
 
     generator = torch.Generator()
     generator.manual_seed(shuffle_seed)
-    
+
     sampler = WeightedRandomSampler(
         weights=sample_weights,
         num_samples=len(sample_weights),
         replacement=True,
-        generator=generator
+        generator=generator,
     )
-    
+
     return DataLoader(
         dataset,
         batch_size=batch_size,
@@ -216,7 +226,7 @@ def __generate_and_augment_data(
     samples_needed: int,
 ) -> Tuple[np.ndarray, np.ndarray]:
     class_name = "ham" if minority_class == 0 else ONE_CLASS
-    
+
     logging.info(
         f"\nGerando {samples_needed} exemplos sintéticos com temperatura {GEN_TEMPERATURE} de {class_name}...\n{DELIMITER}"
     )
@@ -310,10 +320,12 @@ def __train_and_evaluate_mlp(
             MLP_ORIGINAL_BATCH_SIZE,
         )
 
-        val_loader_original = create_dataloader(val_dataset_original, MLP_ORIGINAL_BATCH_SIZE)
-        
+        val_loader_original = create_dataloader(
+            val_dataset_original, MLP_ORIGINAL_BATCH_SIZE
+        )
+
         check_class_distribution(train_loader_original, "DataLoader Original (Treino)")
-        check_class_distribution(val_loader_original, "DataLoader Original (Validação)") 
+        check_class_distribution(val_loader_original, "DataLoader Original (Validação)")
 
         model_original = MLP(
             input_dim=input_dim,
@@ -380,11 +392,11 @@ def __train_and_evaluate_mlp(
         y_train_augmented = torch.tensor(augmented_train_labels, dtype=torch.long).cpu()
 
         train_dataset_augmented = TensorDataset(X_train_augmented, y_train_augmented)
-        
+
         train_loader_augmented = create_deterministic_dataloader(
             train_dataset_augmented, MLP_AUGMENTED_BATCH_SIZE
         )
-        
+
         check_class_distribution(train_loader_augmented, "DataLoader Aumentado")
 
         model_augmented = MLP(
@@ -466,7 +478,7 @@ def main() -> None:
         test_set = data_tensor[test_dataset.indices]
         train_labels = index_tensor[train_dataset.indices]
         test_labels = index_tensor[test_dataset.indices]
-        
+
         unique_labels, counts = np.unique(test_labels, return_counts=True)
         class_counts = dict(zip(unique_labels, counts))
 
@@ -476,9 +488,6 @@ def main() -> None:
             f"Classe 1 ({ONE_CLASS}): {class_counts[1]} amostras\n"
             f"{DELIMITER}"
         )
-            
-        logging.info(f"Rótulos no conjunto de treino: {train_labels.cpu().numpy()}")
-        logging.info(f"Rótulos no conjunto de teste: {test_labels.cpu().numpy()}")
 
         minority_class, samples_needed, _ = __identify_minority_class(
             train_labels.cpu().numpy()
