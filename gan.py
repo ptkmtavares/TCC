@@ -51,12 +51,12 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.output_dim = output_dim
         self.num_classes = num_classes
-        self.fc_in = nn.Linear(latent_dim, 512)
+        self.fc_in = nn.Linear(latent_dim, latent_dim)
         
-        self.res_block1 = ResidualBlock(512, 512, use_ln=True)
-        self.res_block2 = ResidualBlock(512, 512, use_ln=True)
+        self.res_block1 = ResidualBlock(latent_dim, latent_dim, use_ln=True)
+        self.res_block2 = ResidualBlock(latent_dim, latent_dim, use_ln=True)
         
-        self.fc_out = nn.Linear(512, output_dim * num_classes)
+        self.fc_out = nn.Linear(latent_dim, output_dim * num_classes)
 
     def forward(self, z, temperature=INIT_TEMPERATURE, hard=False):
         x = self.fc_in(z)
@@ -68,10 +68,11 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, input_dim=len(FEATURES)*3):
         super(Discriminator, self).__init__()
-        self.fc_in = nn.Linear(input_dim, 256)
-        self.res_block1 = ResidualBlock(256, 256, use_ln=False)
-        self.res_block2 = ResidualBlock(256, 256, use_ln=False)
-        self.fc_out = nn.Linear(256, 1)
+        hidden_dim = LATENT_DIM // 2
+        self.fc_in = nn.Linear(input_dim, hidden_dim)
+        self.res_block1 = ResidualBlock(hidden_dim, hidden_dim, use_ln=False)
+        self.res_block2 = ResidualBlock(hidden_dim, hidden_dim, use_ln=False)
+        self.fc_out = nn.Linear(hidden_dim, 1)
 
     def forward(self, x):
         x = self.fc_in(x)
@@ -146,7 +147,7 @@ def __load_checkpoint(
             - Histórico de perdas do discriminador
             - Histórico de perdas do gerador
     """
-    checkpoint = torch.load(checkpoint_path, weights_only=True)
+    checkpoint = torch.load(checkpoint_path, weights_only=False)
     G.load_state_dict(checkpoint["G_state_dict"])
     D.load_state_dict(checkpoint["D_state_dict"])
     optimizer_G.load_state_dict(checkpoint["optimizer_G_state_dict"])

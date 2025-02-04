@@ -74,13 +74,48 @@ def train_test_split(
     return X[train_indices], X[test_indices], y[train_indices], y[test_indices]
 
 
+def gaussian_kernel(x: torch.Tensor, y: torch.Tensor, sigma: float = 1.0) -> torch.Tensor:
+    """
+    Calcula o kernel Gaussiano entre dois tensores.
+
+    Args:
+        x (torch.Tensor): Primeiro tensor
+        y (torch.Tensor): Segundo tensor
+        sigma (float): Parâmetro do kernel
+
+    Returns:
+        torch.Tensor: Kernel Gaussiano
+    """
+    dist = torch.cdist(x, y, p=2)
+    return torch.exp(-dist ** 2 / (2 * sigma ** 2))
+
+
+def calculate_mmd(x: torch.Tensor, y: torch.Tensor, sigma: float = 1.0) -> float:
+    """
+    Calcula a Discrepância Máxima de Média (MMD) entre dois conjuntos de dados.
+
+    Args:
+        x (torch.Tensor): Primeiro conjunto de dados
+        y (torch.Tensor): Segundo conjunto de dados
+        sigma (float): Parâmetro do kernel
+
+    Returns:
+        float: MMD calculado
+    """
+    xx = gaussian_kernel(x, x, sigma)
+    yy = gaussian_kernel(y, y, sigma)
+    xy = gaussian_kernel(x, y, sigma)
+    mmd = xx.mean() + yy.mean() - 2 * xy.mean()
+    return mmd.item()
+
+
 def perform_c2st(
     real_data: np.ndarray,
     generated_data: np.ndarray,
     device: torch.device,
     batch_size: int = 256,
     num_epochs: int = 100,
-) -> Tuple[float, float]:
+) -> Tuple[float, float, float]:
     """
     Realiza o Classifier Two-Sample Test (C2ST) nos dados reais e gerados.
 
@@ -92,7 +127,7 @@ def perform_c2st(
         num_epochs (int, optional): Número de épocas. Defaults to 100.
 
     Returns:
-        Tuple[float, float]: Acurácia do teste e p-valor
+        Tuple[float, float, float]: Acurácia do teste, p-valor e MMD
     """
     num_samples = min(len(real_data), len(generated_data))
     real_data = real_data[:num_samples]
@@ -133,7 +168,7 @@ def perform_c2st(
         true_labels = y_test.cpu().numpy().flatten()
 
         accuracy = np.mean((predicted_probs > 0.5) == true_labels) * 100
-
         p_value = calculate_pvalue_permutation(predicted_probs, true_labels)
+        mmd = calculate_mmd(torch.FloatTensor(real_data).to(device), torch.FloatTensor(generated_data).to(device))
 
-    return accuracy, p_value
+    return accuracy, p_value, mmd

@@ -46,17 +46,17 @@ def plot_feature_distribution(
 
     _, axs = plt.subplots(1, 2, figsize=(20, 12), sharey=True)
 
-    axs[0].barh(r1, ham_counts[:, 0], color='red', height=bar_width, label='-1')
-    axs[0].barh(r2, ham_counts[:, 1], color='blue', height=bar_width, label='0')
-    axs[0].barh(r3, ham_counts[:, 2], color='green', height=bar_width, label='1')
+    axs[0].barh(r1, ham_counts[:, 0], color='red', height=bar_width, label='-1', alpha=0.6)
+    axs[0].barh(r2, ham_counts[:, 1], color='blue', height=bar_width, label='0', alpha=0.6)
+    axs[0].barh(r3, ham_counts[:, 2], color='green', height=bar_width, label='1', alpha=0.6)
     axs[0].set_yticks([r + bar_width for r in range(len(feature_names))])
     axs[0].set_yticklabels(feature_names)
     axs[0].set_xlabel("Count")
     axs[0].set_title(f"{dataset_type}Ham Feature Distribution (Total:{len(ham_features)})")
 
-    axs[1].barh(r1, phishing_spam_counts[:, 0], color='red', height=bar_width, label='-1')
-    axs[1].barh(r2, phishing_spam_counts[:, 1], color='blue', height=bar_width, label='0')
-    axs[1].barh(r3, phishing_spam_counts[:, 2], color='green', height=bar_width, label='1')
+    axs[1].barh(r1, phishing_spam_counts[:, 0], color='red', height=bar_width, label='-1', alpha=0.6)
+    axs[1].barh(r2, phishing_spam_counts[:, 1], color='blue', height=bar_width, label='0', alpha=0.6)
+    axs[1].barh(r3, phishing_spam_counts[:, 2], color='green', height=bar_width, label='1', alpha=0.6)
     axs[1].set_yticks([r + bar_width for r in range(len(feature_names))])
     axs[1].set_yticklabels(feature_names)
     axs[1].set_xlabel("Count")
@@ -89,7 +89,6 @@ def plot_ray_results(
             df.loc[trial.trial_id, param] = value
 
     plot_list = [
-        "accuracy",
         "val_loss",
         "l1_lambda",
         "l2_lambda",

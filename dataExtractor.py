@@ -710,7 +710,10 @@ def main() -> None:
     index_path = INDEX_PATH
     values = ["ham", ONE_CLASS]
     train_set, labels = get_training_test_set(index_path, values, 1.0)
-    logging.info(f"Training set size: {len(train_set)}, Labels size: {len(labels)}")
+    sample_counts = np.bincount(labels)
+    logging.info(
+        f"{ONE_CLASS.title()} samples: {sample_counts[1]} | Ham samples: {sample_counts[0]}\n"
+    )
     fd_dataset_path = PLOT_DIR + "fd_dataset" + CLASS_PATH + ".svg"
     plot_feature_distribution(
         train_set[labels == 0], train_set[labels == 1], fd_dataset_path

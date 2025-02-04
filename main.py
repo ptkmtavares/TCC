@@ -236,10 +236,11 @@ def __generate_and_augment_data(
     # Realizar C2ST
     logging.info(f"\nRealizando Classifier Two-Sample Test (C2ST)...\n{DELIMITER}")
     real_samples = train_set[train_labels == minority_class].cpu().numpy()
-    c2st_accuracy, p_value = perform_c2st(real_samples, generated_samples, DEVICE)
+    c2st_accuracy, p_value, mmd = perform_c2st(real_samples, generated_samples, DEVICE)
     logging.info(
         f"\nResultados do Classifier Two-Sample Test (C2ST):\n"
         f"Acurácia do C2ST: {c2st_accuracy:.2f}%\n"
+        f"Maximum Mean Discrepancy: {mmd:.4f}\n"
         f"P-valor: {p_value:.4f}\n"
         f"{'Os dados gerados são estatisticamente diferentes dos reais' if p_value < 0.05 else 'Os dados gerados são similares aos reais'}\n"
         f"{DELIMITER}"
@@ -265,25 +266,50 @@ def __train_and_evaluate_mlp(
     try:
         logging.info(f"\nVerificando os melhores hiperparâmetros...\n{DELIMITER}")
         example_data, example_index, _ = get_example_test_set()
-        # best_config = get_hyperparameters(
-        #    augmented_train_set,
-        #    test_set,
-        #    augmented_train_labels,
-        #    test_labels,
-        #    example_data=example_data,
-        #    example_labels=example_index,
-        # )
 
-        best_config = {
-            "l1_lambda": 1e-4,
-            "l2_lambda": 1e-5,
-            "hidden_dim": 32,
-            "lr": 1e-4,
-            "weight_decay": 1e-4,
-            "num_epochs": 1000,
-            "patience": 20,
-            "dropout": 0.4,
-        }
+        input_dim = train_set.shape[1]
+        output_dim = 2
+
+        X_train_original = torch.tensor(train_set, dtype=torch.float32).cpu()
+        y_train_original = torch.tensor(train_labels, dtype=torch.long).cpu()
+        X_test = torch.tensor(test_set, dtype=torch.float32).cpu()
+        y_test = torch.tensor(test_labels, dtype=torch.long).cpu()
+        X_train_augmented = torch.tensor(augmented_train_set, dtype=torch.float32).cpu()
+        y_train_augmented = torch.tensor(augmented_train_labels, dtype=torch.long).cpu()
+
+        train_dataset_original = TensorDataset(X_train_original, y_train_original)
+        val_dataset_original = TensorDataset(X_test, y_test)
+        train_dataset_augmented = TensorDataset(X_train_augmented, y_train_augmented)
+
+        train_loader_original = create_deterministic_dataloader(
+            train_dataset_original,
+            MLP_ORIGINAL_BATCH_SIZE,
+        )
+        val_loader_original = create_dataloader(
+            val_dataset_original, MLP_ORIGINAL_BATCH_SIZE
+        )
+        train_loader_augmented = create_deterministic_dataloader(
+            train_dataset_augmented, MLP_AUGMENTED_BATCH_SIZE
+        )
+
+        best_config = get_hyperparameters(
+            input_dim,
+            train_loader_augmented,
+            val_loader_original,
+            example_data=example_data,
+            example_labels=example_index,
+        )
+
+        #best_config = {
+        #    "l1_lambda": 1e-4,
+        #    "l2_lambda": 1e-5,
+        #    "hidden_dim": 32,
+        #    "lr": 1e-4,
+        #    "weight_decay": 1e-4,
+        #    "num_epochs": 1000,
+        #    "patience": 20,
+        #    "dropout": 0.4,
+        #}
 
         print(DELIMITER)
         logging.info(
@@ -299,29 +325,9 @@ def __train_and_evaluate_mlp(
             f"{DELIMITER}"
         )
 
-        input_dim = train_set.shape[1]
-        output_dim = 2
-
         logging.info(
             f"\nTraining and evaluating the MLP without augmented data...\n"
             f"{DELIMITER}"
-        )
-
-        X_train_original = torch.tensor(train_set, dtype=torch.float32).cpu()
-        y_train_original = torch.tensor(train_labels, dtype=torch.long).cpu()
-        X_test = torch.tensor(test_set, dtype=torch.float32).cpu()
-        y_test = torch.tensor(test_labels, dtype=torch.long).cpu()
-
-        train_dataset_original = TensorDataset(X_train_original, y_train_original)
-        val_dataset_original = TensorDataset(X_test, y_test)
-
-        train_loader_original = create_deterministic_dataloader(
-            train_dataset_original,
-            MLP_ORIGINAL_BATCH_SIZE,
-        )
-
-        val_loader_original = create_dataloader(
-            val_dataset_original, MLP_ORIGINAL_BATCH_SIZE
         )
 
         check_class_distribution(train_loader_original, "DataLoader Original (Treino)")
@@ -388,15 +394,6 @@ def __train_and_evaluate_mlp(
             f"\nTraining and evaluating the MLP with augmented data...\n" f"{DELIMITER}"
         )
 
-        X_train_augmented = torch.tensor(augmented_train_set, dtype=torch.float32).cpu()
-        y_train_augmented = torch.tensor(augmented_train_labels, dtype=torch.long).cpu()
-
-        train_dataset_augmented = TensorDataset(X_train_augmented, y_train_augmented)
-
-        train_loader_augmented = create_deterministic_dataloader(
-            train_dataset_augmented, MLP_AUGMENTED_BATCH_SIZE
-        )
-
         check_class_distribution(train_loader_augmented, "DataLoader Aumentado")
 
         model_augmented = MLP(
@@ -413,8 +410,6 @@ def __train_and_evaluate_mlp(
             lr=best_config["lr"],
             weight_decay=best_config["weight_decay"],
         )
-
-        criterion = nn.CrossEntropyLoss()
 
         _, augmented_train_loss, augmented_val_loss = train_mlp(
             model=model_augmented,

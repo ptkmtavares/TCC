@@ -24,10 +24,9 @@ from plot import plot_ray_results
 
 def __train_mlp_tune(
     config: Dict[str, Any],
-    train_data: torch.Tensor,
-    train_labels: torch.Tensor,
-    test_data: torch.Tensor,
-    test_labels: torch.Tensor,
+    input_dim: int,
+    train_loader: DataLoader,
+    test_loader: DataLoader,
     example_data: torch.Tensor,
     example_labels: torch.Tensor,
 ) -> None:
@@ -35,41 +34,15 @@ def __train_mlp_tune(
 
     Args:
         config (Dict[str, Any]): Configuration dictionary containing hyperparameters.
-        train_data (torch.Tensor): Training data.
-        train_labels (torch.Tensor): Training labels.
-        test_data (torch.Tensor): Test data.
-        test_labels (torch.Tensor): Test labels.
+        train_loader (DataLoader): Training data loader.
+        test_loader (DataLoader): Test data loader.
         example_data (torch.Tensor): Example data for evaluation.
         example_labels (torch.Tensor): Example labels for evaluation.
     """
     try:
-        train_dataset = TensorDataset(
-            torch.tensor(train_data, dtype=torch.float32).to(DEVICE),
-            torch.tensor(train_labels, dtype=torch.long).to(DEVICE),
-        )
-        test_dataset = TensorDataset(
-            torch.tensor(test_data, dtype=torch.float32).to(DEVICE),
-            torch.tensor(test_labels, dtype=torch.long).to(DEVICE),
-        )
-
-        train_loader = DataLoader(
-            train_dataset,
-            batch_size=MLP_AUGMENTED_BATCH_SIZE,
-            shuffle=True,
-            num_workers=0,
-        )
-        test_loader = DataLoader(
-            test_dataset,
-            batch_size=MLP_ORIGINAL_BATCH_SIZE,
-            shuffle=False,
-            num_workers=0,
-        )
-
-        X_example = torch.tensor(example_data, dtype=torch.float32, device=DEVICE)
-        y_example = torch.tensor(example_labels, dtype=torch.long, device=DEVICE)
 
         model = MLP(
-            train_data.shape[1],
+            input_dim,
             config["hidden_dim"],
             output_dim=2,
             l1_lambda=config["l1_lambda"],
@@ -95,6 +68,8 @@ def __train_mlp_tune(
 
         val_loss = val_losses[-1]
 
+        X_example = torch.tensor(example_data, dtype=torch.float32, device=DEVICE)
+        y_example = torch.tensor(example_labels, dtype=torch.long, device=DEVICE)
         _, label_probabilities = predict_mlp(model, X_example)
         correct_probabilities = label_probabilities[range(len(y_example)), y_example]
         accuracy = correct_probabilities.mean().item()
@@ -119,10 +94,9 @@ def __trial_dirname_creator(trial: Trial) -> str:
 
 
 def get_hyperparameters(
-    train_set: np.ndarray,
-    test_set: np.ndarray,
-    train_labels: np.ndarray,
-    test_labels: np.ndarray,
+    input_dim: int,
+    train_loader: DataLoader,
+    test_loader: DataLoader,
     example_data: List[List[int]],
     example_labels: List[int],
     config: str = ONE_CLASS,
@@ -144,24 +118,24 @@ def get_hyperparameters(
     if config == "phishing":
         config = {
             "l1_lambda": tune.loguniform(1e-5, 2e-4),
-            "l2_lambda": tune.loguniform(1e-5, 1e-4),
-            "hidden_dim": tune.choice([32, 64]),
+            "l2_lambda": tune.loguniform(1e-6, 1e-4),
+            "hidden_dim": tune.choice([128, 256]),
             "lr": tune.loguniform(1e-5, 1e-4),
             "weight_decay": tune.loguniform(1e-5, 1e-4),
-            "num_epochs": tune.lograndint(100, 500),
-            "patience": 20,
-            "dropout": tune.uniform(0.3, 0.5),
+            "num_epochs": tune.lograndint(200, 1000),
+            "patience": 50,
+            "dropout": tune.uniform(0.2, 0.3),
         }
     elif config == "spam":
         config = {
             "l1_lambda": tune.loguniform(1e-5, 1e-4),
             "l2_lambda": tune.loguniform(1e-6, 1e-5),
             "hidden_dim": tune.choice([256, 512]),
-            "lr": tune.loguniform(1e-5, 5e-4),
+            "lr": tune.loguniform(1e-4, 1e-3),
             "weight_decay": tune.loguniform(1e-5, 1e-4),
-            "num_epochs": tune.lograndint(100, 500),
+            "num_epochs": tune.lograndint(200, 1000),
             "patience": 50,
-            "dropout": 0.27,
+            "dropout": tune.uniform(0.2, 0.3),
         }
 
     scheduler = ASHAScheduler(
@@ -179,10 +153,9 @@ def get_hyperparameters(
         analysis = tune.run(
             tune.with_parameters(
                 __train_mlp_tune,
-                train_data=train_set,
-                train_labels=train_labels,
-                test_data=test_set,
-                test_labels=test_labels,
+                input_dim=input_dim,
+                train_loader=train_loader,
+                test_loader=test_loader,
                 example_data=example_data,
                 example_labels=example_labels,
             ),

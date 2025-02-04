@@ -119,7 +119,7 @@ def __load_checkpoint(
     Returns:
         tuple: (época, melhor_val_loss, train_losses, val_losses, patience_counter, métricas)
     """
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, weights_only=False)
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
@@ -208,13 +208,14 @@ def train_mlp(
     best_val_loss = float("inf")
     patience_counter = 0
 
-    latest_checkpoint = __get_latest_checkpoint(checkpoint_dir, num_epochs, original_model)
-    if latest_checkpoint:
-        start_epoch, best_val_loss, train_losses, val_losses, patience_counter, _ = __load_checkpoint(
-            model, optimizer, latest_checkpoint
-        )
-        if start_epoch >= num_epochs or patience_counter >= patience:
-            return best_val_loss, train_losses, val_losses
+    if printInfo:
+        latest_checkpoint = __get_latest_checkpoint(checkpoint_dir, num_epochs, original_model)
+        if latest_checkpoint:
+            start_epoch, best_val_loss, train_losses, val_losses, patience_counter, _ = __load_checkpoint(
+                model, optimizer, latest_checkpoint
+            )
+            if start_epoch >= num_epochs or patience_counter >= patience:
+                return best_val_loss, train_losses, val_losses
 
     save_interval = max(1, num_epochs // 4)
 
@@ -223,22 +224,22 @@ def train_mlp(
             if patience_counter >= patience:
                 if printInfo:
                     logging.info(f"Early stopping at epoch [{epoch}/{num_epochs}]")
-                __save_checkpoint(
-                    model=model,
-                    optimizer=optimizer,
-                    epoch=epoch + 1,
-                    best_val_loss=best_val_loss,
-                    train_losses=train_losses,
-                    val_losses=val_losses,
-                    patience_counter=patience_counter,
-                    checkpoint_dir=checkpoint_dir,
-                    original_model=original_model,
-                    metrics={
-                        "patience_counter": patience_counter,
-                        "last_train_loss": train_losses[-1] if train_losses else None,
-                        "last_val_loss": val_losses[-1] if val_losses else None,
-                    },
-                )
+                    __save_checkpoint(
+                        model=model,
+                        optimizer=optimizer,
+                        epoch=epoch + 1,
+                        best_val_loss=best_val_loss,
+                        train_losses=train_losses,
+                        val_losses=val_losses,
+                        patience_counter=patience_counter,
+                        checkpoint_dir=checkpoint_dir,
+                        original_model=original_model,
+                        metrics={
+                            "patience_counter": patience_counter,
+                            "last_train_loss": train_losses[-1] if train_losses else None,
+                            "last_val_loss": val_losses[-1] if val_losses else None,
+                        },
+                    )
                 break
             
             epoch_start_time = time.time()
@@ -283,7 +284,7 @@ def train_mlp(
             else:
                 patience_counter += 1
 
-            if (epoch + 1) % save_interval == 0 or (epoch + 1) == num_epochs:
+            if (epoch + 1) % save_interval == 0 or (epoch + 1) == num_epochs and printInfo:
                 __save_checkpoint(
                     model=model,
                     optimizer=optimizer,
