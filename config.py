@@ -1,3 +1,4 @@
+import os
 import torch
 import multiprocessing
 
@@ -205,3 +206,20 @@ HEADER_INFORMATION = [
     "importance",
     "x-mailing-list",
 ]
+
+# Function to create all folders (if necessary)
+def __setup_directories() -> None:
+    """Sets up the necessary directories for data and index files."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(PLOT_DIR, exist_ok=True)
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    os.makedirs('checkpoints/ham/', exist_ok=True)
+    os.makedirs('checkpoints/phishing/', exist_ok=True)
+    os.makedirs('Dataset/Phishing/TXTs/', exist_ok=True)
+    os.makedirs('Dataset/SpamHam/', exist_ok=True)
+    
+
+# Function to create all folders (if necessary)
+if __name__ == "__main__":
+    __setup_directories()

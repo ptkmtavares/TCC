@@ -164,7 +164,7 @@ def __load_checkpoint(
 
 def __get_latest_checkpoint(
     checkpoint_dir: str = CHECKPOINT_DIR, num_epochs: int = NUM_EPOCHS_GAN
-) -> str:
+) -> str | None:
     """
     Get the latest checkpoint file.
 
