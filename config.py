@@ -207,8 +207,7 @@ HEADER_INFORMATION = [
     "x-mailing-list",
 ]
 
-# Function to create all folders (if necessary)
-def __setup_directories() -> None:
+def setup_directories() -> None:
     """Sets up the necessary directories for data and index files."""
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -218,8 +217,6 @@ def __setup_directories() -> None:
     os.makedirs('checkpoints/phishing/', exist_ok=True)
     os.makedirs('Dataset/Phishing/TXTs/', exist_ok=True)
     os.makedirs('Dataset/SpamHam/', exist_ok=True)
-    
 
-# Function to create all folders (if necessary)
 if __name__ == "__main__":
-    __setup_directories()
+    setup_directories()

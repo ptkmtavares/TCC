@@ -31,14 +31,13 @@ from config import (
     MLP_AUGMENTED_PLOT_PATH,
     FD_ORIGINAL_DATA_PLOT_PATH,
     FD_AUGMENTED_DATA_PLOT_PATH,
-    LR_ORIGINAL_DATA_PLOT_PATH,
-    LR_AUGMENTED_DATA_PLOT_PATH,
     NUM_WORKERS,
     ONE_CLASS,
     GAN_BATCH_SIZE,
     MLP_AUGMENTED_BATCH_SIZE,
     MLP_ORIGINAL_BATCH_SIZE,
     TRAIN_SPLIT,
+    setup_directories,
 )
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
@@ -464,6 +463,7 @@ def __train_and_evaluate_mlp(
 
 def main() -> None:
     try:
+        setup_directories()
         set_seed(23)
         train_dataset, test_dataset, data_tensor, index_tensor = (
             __load_and_preprocess_data()
