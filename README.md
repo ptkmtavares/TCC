@@ -1,93 +1,308 @@
-# Detecção de Cabeçalho SMTP Falso usando IA
+# Uma Nova Abordagem para Detecção de Cabeçalhos SMTP Falsos usando Aprendizado Profundo e Geração de Dados Sintéticos
 
-Este projeto de TCC tem como objetivo detectar cabeçalhos SMTP falsos em e-mails utilizando técnicas de Inteligência Artificial. O sistema é projetado para identificar e-mails de phishing e spam, diferenciando-os de e-mails legítimos (ham). A implementação utiliza uma combinação de Redes Neurais Artificiais (MLP e GAN) e várias bibliotecas e ferramentas avançadas para otimizar o desempenho e a precisão.
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.5.1-red.svg)](https://pytorch.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+## Sumário
+
+- [Visão Geral](#visão-geral)
+- [Abstract](#abstract)
+- [Arquitetura do Sistema](#arquitetura-do-sistema)
+- [Requisitos](#requisitos)
+- [Instalação](#instalação)
+- [Configuração](#configuração)
+- [Uso](#uso)
+- [Estrutura do Projeto](#estrutura-do-projeto)
+- [Metodologia](#metodologia)
+- [Avaliação](#avaliação)
+- [Resultados](#resultados)
+
+## Visão Geral
+
+Este projeto implementa uma abordagem inovadora para detecção de cabeçalhos SMTP falsificados em e-mails, combinando técnicas de aprendizado profundo com geração de dados sintéticos. O sistema é capaz de classificar e-mails em três categorias: **ham** (legítimos), **spam** e **phishing**, utilizando análise de cabeçalhos SMTP.
+
+## Abstract
+
+Este trabalho propõe uma nova abordagem para a detecção de cabeçalhos de e-mail anômalos, com foco em mensagens de phishing, spam e legítimas. Utilizamos um **Perceptron Multicamadas (MLP)** para classificação e uma **Rede Adversária Generativa com Gradiente Penalizado (WGAN-GP)** para geração de dados sintéticos. A técnica **Gumbel Softmax** é empregada para simular características de conjuntos de dados desbalanceados, e os dados gerados são avaliados por testes estatísticos. O **Ray Tune** é utilizado para otimização dos hiperparâmetros do modelo. Os resultados demonstram que a abordagem proposta melhora a acurácia e a capacidade de generalização na detecção de ameaças em cabeçalhos de e-mail.
+
+## Arquitetura do Sistema
+
+```mermaid
+graph TD
+    A[Cabeçalhos SMTP] --> B[Extração de Características<br/>57 features]
+    B --> C[Geração de Dados Sintéticos<br/>WGAN-GP]
+    C --> D[Classificação MLP<br/>ResNet-like]
+    
+    B --> E[Validação C2ST &<br/>Gumbel Softmax]
+    C --> E
+    D --> F[Predições<br/>Ham/Spam/Phish]
+    E --> F
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
+    style E fill:#fce4ec
+    style F fill:#f1f8e9
+```
+
+## Requisitos
+
+### Sistema
+
+- Python 3.8+
+- CUDA (opcional, para aceleração GPU)
+- 8 GB+ de RAM recomendado.
+
+### Dependências Principais
+
+- `torch==2.5.1` - Framework de deep learning.
+- `numpy==2.2.2` - Computação numérica.
+- `ray==2.41.0` - Otimização distribuída de hiperparâmetros.
+- `matplotlib==3.10.0`  - Visualização de dados.
+
+## Instalação
+
+1. **Clone o repositório:**
+
+    ```bash
+    git clone <url-do-repositorio>
+    cd TCC
+    ```
+
+2. **Crie um ambiente virtual:**
+
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # Linux/Mac
+    # ou
+    venv\Scripts\activate     # Windows
+    ```
+
+3. **Instale as dependências:**
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4. **Configure os diretórios:**
+
+    ```bash
+    python config.py
+    ```
+
+## Configuração
+
+### Configuração Principal (`config.py`)
+
+O arquivo `config.py` contém todas as configurações do sistema:
+
+```python
+# Escolha do tipo de classificação
+ONE_CLASS = "spam"  # ou "phishing"
+
+# Configurações de hardware
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+NUM_WORKERS = min(8, multiprocessing.cpu_count())
+
+# Hiperparâmetros da GAN
+LATENT_DIM = 1024
+NUM_EPOCHS_GAN = 3000
+LR_GAN = [0.0002, 0.0002]
+GEN_TEMPERATURE = 0.4  # Para Gumbel Softmax
+```
+
+### Características Extraídas
+
+O sistema extrai **57 características** dos cabeçalhos SMTP, incluindo:
+
+- **Características temporais**: `time_zone`, `date_comp_date_received`
+- **Campos ausentes**: `missing_mime-version`, `missing_x-mailer`, etc.
+- **Análise de strings**: `str_content-encoding_empty`, `str_from_question`, etc.
+- **Validação de domínios**: `domain_match_message-id_from`, etc.
+- **Verificação de autenticidade**: `received_str_forged`, `email_match_from_reply-to`
+
+### Dados e Cache
+
+O projeto utiliza um sistema de cache inteligente que armazena as características processadas em arquivos `.pkl` no diretório `cache/`. Isso acelera significativamente execuções subsequentes.
+
+#### Datasets Incluídos
+
+O projeto já inclui dados processados em cache. Para trabalhar com dados originais ou adicionar novos datasets:
+
+#### Dados de Phishing
+
+Para baixar novos dados de phishing:
+
+1. Acesse: [https://monkey.org/~jose/phishing/](https://monkey.org/~jose/phishing/)
+2. Baixe os arquivos TXT (phishing-20XX)
+3. Extraia em: `Dataset/Phishing/TXTs/`
+
+#### Dados de Spam/Ham
+
+Para o dataset TREC07:
+
+1. Acesse: [https://plg.uwaterloo.ca/~gvcormac/treccorpus07/](https://plg.uwaterloo.ca/~gvcormac/treccorpus07/)
+2. Baixe e extraia em: `Dataset/SpamHam/`
+
+**Nota**: Após adicionar novos dados, delete os arquivos de cache em `cache/` para forçar o reprocessamento com os novos datasets.
+
+## Uso
+
+### Execução Principal
+
+```bash
+python main.py
+```
+
+### Configuração para Spam vs Ham
+
+```bash
+# Edite config.py
+ONE_CLASS = "spam"
+python main.py
+```
+
+### Configuração para Phishing vs Ham
+
+```bash
+# Edite config.py
+ONE_CLASS = "phishing"
+python main.py
+```
+
+### Fluxo de Execução
+
+1. **Carregamento dos dados** - Extração de características dos e-mails
+2. **Identificação da classe minoritária** - Análise do desbalanceamento
+3. **Treinamento da WGAN-GP** - Geração de dados sintéticos
+4. **Validação C2ST** - Teste estatístico dos dados gerados
+5. **Otimização de hiperparâmetros** - Ray Tune para MLP
+6. **Treinamento comparativo** - Modelo original vs. aumentado
+7. **Avaliação final** - Métricas e visualizações
 
 ## Estrutura do Projeto
 
-A estrutura do projeto é organizada da seguinte forma:
-
-```plaintext
-.
-├── cache/
-├── checkpoints/
-├── Dataset/
-├── plots/
-├── .gitignore
-├── config.py
-├── dataExtractor.py
-├── dataOrganizer.py
-├── gan.py
-├── main.py
-├── mlp.py
-├── plot.py
-├── rayParam.py
-├── receivedParser.py
+```text
+TCC/
+├── main.py                # Script principal de execução
+├── config.py              # Configurações globais
+├── requirements.txt       # Dependências Python
+├── 
+├── Modelos
+│   ├── mlp.py             # Implementação do MLP com ResNet blocks
+│   ├── gan.py             # WGAN-GP com Gumbel Softmax
+│   └── c2st.py            # Classifier Two-Sample Test
+├── 
+├── Processamento
+│   ├── dataExtractor.py   # Extração de características
+│   ├── dataOrganizer.py   # Organização dos datasets
+│   ├── receivedParser.py  # Análise de cabeçalhos Received
+│   └── rayParam.py        # Otimização com Ray Tune
+├── 
+├── Visualização
+│   └── plot.py            # Gráficos e visualizações
+├── 
+├── Dados
+│   ├── Dataset/           # Datasets originais
+│   │   ├── data/          # Dados processados
+│   │   ├── example/       # Exemplos de teste
+│   │   ├── Phishing/      # Datasets de phishing
+│   │   └── SpamHam/       # Datasets spam/ham
+│   ├── cache/             # Cache de características
+│   ├── checkpoints/       # Checkpoints dos modelos
+│   └── plots/             # Gráficos gerados
+└── 
 ```
 
-## Funcionalidades Principais
+## Metodologia
 
-### 1. Carregamento e Pré-processamento de Dados
+### 1. Extração de Características
 
-O projeto utiliza a função `__load_and_preprocess_data` para carregar e pré-processar os dados de treinamento e teste. Os dados são divididos em conjuntos de treinamento e teste, e os tensores são preparados para uso em modelos de aprendizado profundo.
+- Análise de 57 características dos cabeçalhos SMTP
+- Cache inteligente para otimização de performance
+- Processamento paralelo para grandes datasets
 
-### 2. Configuração e Treinamento do GAN
+### 2. WGAN-GP com Gumbel Softmax
 
-A função `__setup_gan` configura e treina uma Rede Generativa Adversarial (GAN) para gerar exemplos adversariais de e-mails de phishing. O GAN é treinado para aumentar o conjunto de dados de phishing, equilibrando a quantidade de exemplos de phishing e ham.
+## Características principais da GAN
 
-### 3. Geração e Aumento de Dados
+- Generator com ResidualBlocks
+- Discriminator com Gradient Penalty
+- Gumbel Softmax para características categóricas
+- Temperature annealing para estabilidade
 
-A função `__generate_and_augment_data` gera exemplos adversariais usando o gerador treinado e aumenta o conjunto de dados de treinamento com esses exemplos. Isso ajuda a melhorar a precisão do modelo ao lidar com e-mails de phishing.
+### 3. Validação Estatística
 
-### 4. Treinamento e Avaliação do MLP
+- **Classifier Two-Sample Test (C2ST)** para validar qualidade dos dados sintéticos
+- **Maximum Mean Discrepancy (MMD)** para medir divergência
+- **Testes de permutação** para p-values
 
-A função `__train_and_evaluate_mlp` treina e avalia um Perceptron Multicamadas (MLP) com e sem dados aumentados. O desempenho do modelo é comparado em termos de precisão e matriz de confusão.
+### 4. Classificação MLP
 
-### 5. Predição em Conjunto de Teste de Exemplo
+## Arquitetura do MLP
 
-A função `main` executa o processo completo de treinamento e avaliação, incluindo a predição em um conjunto de teste de exemplo. Os resultados são registrados e comparados para avaliar a eficácia do modelo.
+- Input Layer: 57 características
+- Residual Blocks: 2 camadas com skip connections
+- Regularização: L1, L2, Dropout
+- Output: 2 classes (ham vs spam/phishing)
 
-## Tecnologias Utilizadas
+### 5. Otimização de Hiperparâmetros
 
-### 1. Caching com Pickle
+- **Ray Tune** para busca automática
+- **Validação cruzada** estratificada
+- **Early stopping** para evitar overfitting
 
-O projeto utiliza a biblioteca Pickle para armazenar em cache os recursos extraídos dos e-mails. Isso acelera o processo de carregamento de dados, evitando a necessidade de reprocessar os e-mails a cada execução.
+## Avaliação
 
-### 2. Processamento Paralelo com concurrent.futures
+### Métricas Utilizadas
 
-Para melhorar a eficiência do processamento de e-mails, o projeto utiliza a biblioteca concurrent.futures para processar e-mails em paralelo. Isso reduz significativamente o tempo de execução ao lidar com grandes volumes de dados.
+- **Acurácia**: Precisão geral do modelo
+- **Precisão por classe**: Ham, Spam, Phishing
+- **Recall por classe**: Taxa de detecção
+- **F1-Score**: Média harmônica entre precisão e recall
+- **Matriz de Confusão**: Análise detalhada de erros
 
-### 3. Aceleração com CUDA
+### Validação dos Dados Sintéticos
 
-O projeto utiliza a biblioteca PyTorch com aceleração CUDA para aproveitar o poder de processamento das GPUs. Isso acelera o treinamento e a inferência dos modelos de aprendizado profundo, permitindo lidar com grandes conjuntos de dados de forma eficiente.
+- **C2ST Accuracy**: < 60% indica dados sintéticos de qualidade
+- **P-value**: > 0.05 sugere similaridade estatística
+- **MMD**: Distância entre distribuições reais e sintéticas
 
-### 4. Otimização de Hiperparâmetros com Ray Tune
+## Resultados
 
-Para encontrar os melhores hiperparâmetros para os modelos, o projeto utiliza a biblioteca Ray Tune. O Ray Tune realiza uma busca eficiente de hiperparâmetros, melhorando o desempenho e a precisão dos modelos treinados.
+### Exemplo de Output
 
-### 5. Visualização de Dados com Matplotlib
+```text
+Distribuição das classes:
+Classe 0 (ham): 2500 amostras
+Classe 1 (spam): 800 amostras
+Classe minoritária: 1
+Amostras necessárias para balanceamento: 1700
 
-O projeto utiliza a biblioteca Matplotlib para criar visualizações dos dados e resultados dos modelos. Isso inclui a distribuição de características de e-mails, resultados de tuning de hiperparâmetros, perdas de treinamento e matrizes de confusão. As visualizações ajudam a entender melhor o desempenho dos modelos e a eficácia das técnicas aplicadas.
+Resultados do Classifier Two-Sample Test (C2ST):
+Acurácia do C2ST: 52.30%
+Maximum Mean Discrepancy: 0.0234
+P-valor: 0.1245
+Os dados gerados são similares aos reais
 
-## Como Executar
-
-Clone o repositório:
-
-```bash
-    git clone https://github.com/ptkmtavares/TCC
-    cd https://github.com/ptkmtavares/TCC
+Comparison of results:
+Accuracy with GAN-augmented data: 94.50%
+Accuracy without GAN-augmented data: 89.20%
+Accuracy gain: 5.30%
 ```
 
-Instale as dependências:
+### Visualizações Geradas
 
-```bash
-    pip install -r requirements.txt
-```
+- Curvas de treinamento do MLP
+- Perdas da GAN durante treinamento
+- Distribuição de características (original vs sintético)
+- Matrizes de confusão
+- Resultados do Ray Tune
 
-Execute o script principal:
+---
 
-```bash
-    python main.py
-```
+## Licença
 
-Conclusão
-Este projeto demonstra a aplicação de técnicas avançadas de Inteligência Artificial para a detecção de cabeçalhos SMTP falsos em e-mails. Utilizando uma combinação de caching, processamento paralelo, aceleração com CUDA e otimização de hiperparâmetros, o sistema alcança alta precisão na identificação de e-mails de phishing e spam.
+Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
